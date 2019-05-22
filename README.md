@@ -13,6 +13,14 @@ npm install --save microauth-auth0
 yarn add microauth-auth0
 ```
 
+## Configuration
+
+Take your credentials from the settings section in the [Auth0 dashboard](https://manage.auth0.com/dashboard) :
+* Allowed Callback URLs:	'http://localhost:3000/auth/auth0/callback'
+* Domain:			'your-domain.auth0.com'
+* Client ID:			'your-client-id'
+* Client Secret:		'your-client-secret'
+
 ## Usage (soon)
 
 app.js
