@@ -67,3 +67,4 @@ Now visit `http://localhost:3000/auth/auth0`
 
 
 ## Author
+[Ademar Arvati Filho](https://github.com/arvati)
