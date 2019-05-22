@@ -3,6 +3,7 @@ const url = require('url');
 
 const uuid = require('uuid');
 const rp = require('request-promise-native');
+const OAuth2 = require('oauth').OAuth2
 const redirect = require('micro-redirect');
 const pkg = require('./package.json');
 
@@ -18,7 +19,7 @@ function encodeClientInfo(obj) {
 const clientInfoHeader = encodeClientInfo({ name: pkg.name, version: pkg.version });
 
 
-const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth/auth0', scope = 'openid email profile' }) => {
+const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth/auth0', scope = 'openid email profile', scopeSeparator = ' ' }) => {
     ['domain',
         'clientId',
         'clientSecret',
@@ -27,6 +28,8 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
           throw new Error('You must provide the ' + k + ' configuration value to use microauth-auth0.');
         }
       });
+      // optionally scope as array and scope separator to be used.
+      if (Array.isArray(scope)) { scope = scope.join(scopeSeparator); }
 
 
   const getRedirectUrl = state => {
@@ -34,7 +37,9 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
     return `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scope}&state=${state}`;
   };
 
+
   const states = [];
+
 
   return fn => async (req, res, ...args) => {
     const { pathname, query } = url.parse(req.url);
@@ -55,14 +60,30 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
     if (pathname === callbackPath) {
       try {
         const { state, code } = querystring.parse(query);
-
         if (!states.includes(state)) {
           const err = new Error('Invalid state');
           args.push({ err, provider });
           return fn(req, res, ...args);
         }
-
         states.splice(states.indexOf(state), 1);
+
+            authorizationURL =
+    tokenURL =
+    customHeaders =
+        const oauth2 = new OAuth2(clientId, clientSecret,
+                            'https://' + domain, '/authorize', '/oauth/token', { 'Auth0-Client': clientInfoHeader});
+        oauth2.getAuthorizeUrl({response_type:"code",client_id:clientId,redirect_uri:callbackUrl, scope:scope, state:state});
+        oauth2.useAuthorizationHeaderforGET(true) // // e.g. Authorization: Bearer <token>
+        oauth2.getOAuthAccessToken(code,
+            { grant_type: 'authorization_code', client_id: clientId, client_secret: clientSecret, redirect_ui: callbackUrl }
+             (err, access_token, refresh_token, results) => {
+                 oauth2.get( 'https://' + domain + '/userinfo',access_token,
+                    (err, result, response) => {
+                        var json = JSON.parse(result);
+                        var profile = new Profile(json, result);
+                    })
+             });
+
 
         const response = await rp({
           method: 'POST',
