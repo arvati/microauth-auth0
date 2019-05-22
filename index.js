@@ -5,9 +5,9 @@ const uuid = require('uuid');
 const rp = require('request-promise-native');
 const redirect = require('micro-redirect');
 
-const provider = 'slack';
+const provider = 'auth0';
 
-const microAuthSlack = ({ clientId, clientSecret, callbackUrl, path = '/auth/slack', scope = 'identity.basic' }) => {
+const microAuth0 = ({ clientId, clientSecret, callbackUrl, path = '/auth/auth0', scope = 'identity.basic' }) => {
   const getRedirectUrl = state => {
     return `https://slack.com/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scope}&state=${state}`;
   };
@@ -89,4 +89,4 @@ const microAuthSlack = ({ clientId, clientSecret, callbackUrl, path = '/auth/sla
   }
 };
 
-module.exports = microAuthSlack;
+module.exports = microAuth0;
