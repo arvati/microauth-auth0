@@ -2,7 +2,7 @@ const querystring = require('querystring');
 const url = require('url');
 
 const uuid = require('uuid');
-const rp = require('request-promise');
+const rp = require('request-promise-native');
 const redirect = require('micro-redirect');
 
 const provider = 'slack';
