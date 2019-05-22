@@ -1,0 +1,28 @@
+{
+  "name": "microauth-auth0",
+  "version": "0.0.1",
+  "description": "Auth0 oauth for micro",
+  "main": "index.js",
+  "scripts": {
+    "example": "micro-dev example.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arvati/microauth-auth0"
+  },
+  "author": "Ademar Arvati Filho",
+  "license": "MIT",
+  "dependencies": {
+    "micro-redirect": "^1.0.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4",
+    "uuid": "^3.3.2"
+  },
+  "peerDependencies": {
+    "micro": "^9.1.0"
+  },
+  "devDependencies": {
+    "micro": "^9.3.4",
+    "micro-dev": "^3.0.0"
+  }
+}
