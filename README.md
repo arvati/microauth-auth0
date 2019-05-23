@@ -5,7 +5,7 @@
 Add [Auth0](https://auth0.com) authentication to your [micro](https://github.com/zeit/micro/) service as easy as a flick of your fingers.
 This module is meant to be used like a module from [microauth](https://github.com/microauth/microauth) collection.
 
-## Installation (soon)
+## Installation
 
 ```sh
 npm install --save microauth-auth0
@@ -21,7 +21,7 @@ Take your credentials from the settings section in the [Auth0 dashboard](https:/
 * Client ID:			'your-client-id'
 * Client Secret:		'your-client-secret'
 
-## Usage (soon)
+## Usage
 
 app.js
 ```js
