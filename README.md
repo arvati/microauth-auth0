@@ -25,15 +25,17 @@ Take your credentials from the settings section in the [Auth0 dashboard](https:/
 
 app.js
 ```js
-const { send } = require('micro');
-const microAuthAuth0 = require('microauth-auth0');
+const send = require('micro').send;
+const microAuthAuth0 = require('.');
+require('dotenv-safe').config();
 
 const options = {
-  clientId: 'CLIENT_ID',
-  clientSecret: 'CLIENT_SECRET',
-  callbackUrl: 'http://localhost:3000/auth/auth0/callback',
-  path: '/auth/auth0',
-  scope: ''
+    domain: process.env.AUTH0_DOMAIN,
+    clientId: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    callbackUrl: process.env.AUTH0_CALLBACKURL || 'http://localhost:3000/auth/auth0/callback',
+    path: '/auth/auth0',
+    scope: 'openid email address phone profile' // profile = name, family_name, given_name, middle_name, nickname, preferred_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated_at
 };
 
 const auth0 = microAuthAuth0(options);
@@ -44,6 +46,7 @@ const auth0 = microAuthAuth0(options);
 //  accessToken: 'blahblah',
 //  info: userInfo
 // }}
+
 const handler = async (req, res, auth) => {
 
   if (!auth) {
@@ -57,8 +60,8 @@ const handler = async (req, res, auth) => {
   }
 
   // Save something in database here
-
-  return `Hello ${auth.result......}`;
+  
+  return `Hello ${auth.result.info.profile.displayName}`;
 
 };
 

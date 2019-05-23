@@ -39,7 +39,6 @@ class Oauth2 {
                  (error, access_token, refresh_token, results) => {
                     if (error) reject({error});
                     else {
-                        console.log(results)
                         resolve({access_token, refresh_token, id_token: results.id_token, token_type: results.token_type})
                     }
                  });
