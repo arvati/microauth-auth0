@@ -1,12 +1,11 @@
 const querystring = require('querystring');
 const url = require('url');
-const uuid = require('uuid');
 const redirect = require('micro-redirect');
 const Oauth2 = require('./Oauth2');
 
 const provider = 'auth0';
 
-const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth/auth0', scope = 'openid email profile', scopeSeparator = ' ' }) => {
+const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, path = '/auth/auth0', scope = 'openid email profile offline_access', scopeSeparator = ' ' }) => {
   ['domain',
       'clientId',
       'clientSecret',
@@ -18,11 +17,12 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
     // optionally scope as array and scope separator to be used.
     if (Array.isArray(scope)) { scope = scope.join(scopeSeparator); }
   const states = [];
-  params = {
+  const params = {
     clientId, 
     clientSecret, 
     domain, 
     callbackUrl,
+    connection,
     scope
   }
   const oauth2 = new Oauth2(params);
@@ -32,8 +32,8 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
 
     if (pathname === path) {
       try {
-        const state = uuid.v4();
-        const redirectUrl = oauth2.getAuthorizeUrl({state});
+        const redirectUrl = oauth2.getAuthorizeUrl({});
+        const {state} = querystring.parse(url.parse(redirectUrl).query);
         states.push(state);
         return redirect(res, 302, redirectUrl);
       } catch (err) {
@@ -65,6 +65,7 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
         const id_token = response.id_token; //  contain user information that must be decoded and extracted.
         const token_type = response.token_type; // Example = "Bearer"
 
+        console.log(oauth2.verifyToken(id_token))
         const info = await oauth2.getProfile({access_token})
 
         const result = {

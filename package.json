@@ -2,17 +2,25 @@
   "name": "microauth-auth0",
   "version": "0.0.1",
   "description": "Auth0 oauth for micro",
+  "keywords": [
+    "micro",
+    "auth",
+    "microauth",
+    "auth0"
+  ],
+  "private": false,
+  "homepage": "https://github.com/arvati/microauth-auth0#readme",
+  "bugs": "https://github.com/arvati/microauth-auth0/issues",
   "main": "index.js",
   "scripts": {
     "example": "micro-dev example.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/arvati/microauth-auth0"
-  },
-  "author": "Ademar Arvati Filho",
+  "repository": "github:arvati/microauth-auth0",
+  "author": "Ademar Arvati Filho (https://github.com/arvati)",
   "license": "MIT",
   "dependencies": {
+    "jwks-rsa": "^1.5.1",
+    "jws": "^3.2.2",
     "micro-redirect": "^1.0.0",
     "oauth": "^0.9.15",
     "querystring": "^0.2.0",
@@ -25,5 +33,12 @@
     "dotenv-safe": "^6.1.0",
     "micro": "^9.3.4",
     "micro-dev": "^3.0.0"
-  }
+  },
+  "engines": {
+    "node": ">=7.10.1"
+  },
+  "files": [
+    "Oauth2.js",
+    "Profile.js"
+  ]
 }

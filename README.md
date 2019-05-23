@@ -15,7 +15,7 @@ yarn add microauth-auth0
 
 ## Configuration
 
-Take your credentials from the settings section in the [Auth0 dashboard](https://manage.auth0.com/dashboard) :
+Take your credentials from the settings section in the [Auth0 dashboard](https://manage.auth0.com/#/applications) :
 * Allowed Callback URLs:	'http://localhost:3000/auth/auth0/callback'
 * Domain:			'your-domain.auth0.com'
 * Client ID:			'your-client-id'
@@ -78,4 +78,5 @@ Now visit `http://localhost:3000/auth/auth0`
 
 
 ## Author
-[Ademar Arvati Filho](https://github.com/arvati)
+[Ademar Arvati Filho](https://github.com/arvati)    
+[Contributors](AUTHORS.md)

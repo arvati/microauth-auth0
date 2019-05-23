@@ -1,6 +1,9 @@
 const OAuth2 = require('oauth').OAuth2
-const Profile = require('./Profile');
+const jws = require('jws');
+const uuid = require('uuid');
+const jwksClient = require('jwks-rsa');
 const pkg = require('./package.json');
+const Profile = require('./Profile');
 
 function encodeClientInfo(obj) {
     const str = JSON.stringify(obj);
@@ -12,9 +15,10 @@ function encodeClientInfo(obj) {
   
 
 class Oauth2 {
-    constructor({clientId, clientSecret, domain, callbackUrl,scope}) {
+    constructor({clientId, clientSecret, domain, callbackUrl, connection, scope}) {
         this._clientId = clientId;
         this._callbackUrl = callbackUrl;
+        this._connection = connection;
         this._scope = scope;
         this._clientSecret = clientSecret;
         this._domain = domain;
@@ -26,9 +30,29 @@ class Oauth2 {
         this._oauth2.setAuthMethod("Bearer");
     }
 
-    getAuthorizeUrl({state, response_type = "code"}) {
+    decodeJws(signature){
+        const jwt = jws.decode(signature)
+        console.log(jwt)
+        return jwt
+    }
+    verifyToken(signature){
+        var result = false;
+        this.getSecretKey({signature:signature})
+        .then(({algorithm,secretOrKey}) => {
+            result = jws.verify(signature, algorithm, secretOrKey)
+        })
+        return result;
+    }
+    getAuthorizeUrl({state = uuid.v4(), response_type = "code"}) {
         // https://auth0.com/docs/flows/guides/auth-code/add-login-auth-code#authorize-the-user
-        return this._oauth2.getAuthorizeUrl({response_type:response_type,client_id:this._clientId,redirect_uri:this._callbackUrl, scope:this._scope, state:state})
+        const params = {
+            response_type:response_type,
+            client_id:this._clientId,
+            redirect_uri:this._callbackUrl,
+            scope:this._scope, 
+            state:state}
+        if (this._connection) params.connection = this._connection
+        return this._oauth2.getAuthorizeUrl(params)
     }
 
     getOAuthAccessToken({code, grant_type = 'authorization_code'}) {
@@ -44,7 +68,29 @@ class Oauth2 {
                  });
             })
     }
-
+    getSecretKey({signature}) {
+        var _self = this;
+        const header = _self.decodeJws(signature).header;
+        return new Promise(function (resolve, reject) {
+            if (header.alg === 'HS256') resolve({algorithm: header.alg, secretOrKe: _self._clientSecret}) ;
+            else if (header.alg === 'RS256') {
+                const client = jwksClient({
+                    strictSsl: true, // Default value
+                    jwksUri: 'https://' + _self._domain + '/.well-known/jwks.json',
+                  });
+                client.getSigningKey(header.kid, (error, key) => {
+                    if (error) reject({error});
+                    else {
+                        const signingKey = key.publicKey || key.rsaPublicKey;
+                        resolve({
+                            algorithm: header.alg,
+                            secretOrKey: signingKey})
+                    }
+                })
+            }
+            else reject(new Error('Not valid algorithm'));
+            });
+    }
     getProfile({access_token}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
