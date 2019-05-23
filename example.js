@@ -1,5 +1,6 @@
-const { send } = require('micro');
+const send = require('micro').send;
 const microAuthAuth0 = require('.');
+require('dotenv-safe').config();
 
 const options = {
     domain: process.env.AUTH0_DOMAIN,
@@ -25,8 +26,8 @@ const handler = async (req, res, auth) => {
   }
 
   // Save something in database here
-
-  return `Hello ${auth.result.info}`;
+  return JSON.stringify(auth.result);
+  //return `Hello ${auth.result.info}`;
 
 };
 

@@ -14,14 +14,15 @@
   "license": "MIT",
   "dependencies": {
     "micro-redirect": "^1.0.0",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.7",
+    "oauth": "^0.9.15",
+    "querystring": "^0.2.0",
     "uuid": "^3.3.2"
   },
   "peerDependencies": {
     "micro": "^9.1.0"
   },
   "devDependencies": {
+    "dotenv-safe": "^6.1.0",
     "micro": "^9.3.4",
     "micro-dev": "^3.0.0"
   }

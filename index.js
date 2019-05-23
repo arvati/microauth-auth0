@@ -1,45 +1,31 @@
 const querystring = require('querystring');
 const url = require('url');
-
 const uuid = require('uuid');
-const rp = require('request-promise-native');
-const OAuth2 = require('oauth').OAuth2
 const redirect = require('micro-redirect');
-const pkg = require('./package.json');
+const Oauth2 = require('./Oauth2');
 
 const provider = 'auth0';
 
-function encodeClientInfo(obj) {
-  const str = JSON.stringify(obj);
-  return new Buffer(str).toString('base64')
-      .replace(/\+/g, '-') // Convert '+' to '-'
-      .replace(/\//g, '_') // Convert '/' to '_'
-      .replace(/=+$/, ''); // Remove ending '='
-}
-const clientInfoHeader = encodeClientInfo({ name: pkg.name, version: pkg.version });
-
-
 const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth/auth0', scope = 'openid email profile', scopeSeparator = ' ' }) => {
-    ['domain',
-        'clientId',
-        'clientSecret',
-        'callbackUrl'].forEach(function (k) {
-        if(!k){
-          throw new Error('You must provide the ' + k + ' configuration value to use microauth-auth0.');
-        }
-      });
-      // optionally scope as array and scope separator to be used.
-      if (Array.isArray(scope)) { scope = scope.join(scopeSeparator); }
-
-
-  const getRedirectUrl = state => {
-    // https://auth0.com/docs/flows/guides/auth-code/add-login-auth-code#authorize-the-user
-    return `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${callbackUrl}&scope=${scope}&state=${state}`;
-  };
-
-
+  ['domain',
+      'clientId',
+      'clientSecret',
+      'callbackUrl'].forEach(function (k) {
+      if(!k){
+        throw new Error('You must provide the ' + k + ' configuration value to use microauth-auth0.');
+      }
+    });
+    // optionally scope as array and scope separator to be used.
+    if (Array.isArray(scope)) { scope = scope.join(scopeSeparator); }
   const states = [];
-
+  params = {
+    clientId, 
+    clientSecret, 
+    domain, 
+    callbackUrl,
+    scope
+  }
+  const oauth2 = new Oauth2(params);
 
   return fn => async (req, res, ...args) => {
     const { pathname, query } = url.parse(req.url);
@@ -47,7 +33,7 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
     if (pathname === path) {
       try {
         const state = uuid.v4();
-        const redirectUrl = getRedirectUrl(state);
+        const redirectUrl = oauth2.getAuthorizeUrl({state});
         states.push(state);
         return redirect(res, 302, redirectUrl);
       } catch (err) {
@@ -67,79 +53,27 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, path = '/auth
         }
         states.splice(states.indexOf(state), 1);
 
-            authorizationURL =
-    tokenURL =
-    customHeaders =
-        const oauth2 = new OAuth2(clientId, clientSecret,
-                            'https://' + domain, '/authorize', '/oauth/token', { 'Auth0-Client': clientInfoHeader});
-        oauth2.getAuthorizeUrl({response_type:"code",client_id:clientId,redirect_uri:callbackUrl, scope:scope, state:state});
-        oauth2.useAuthorizationHeaderforGET(true) // // e.g. Authorization: Bearer <token>
-        oauth2.getOAuthAccessToken(code,
-            { grant_type: 'authorization_code', client_id: clientId, client_secret: clientSecret, redirect_ui: callbackUrl }
-             (err, access_token, refresh_token, results) => {
-                 oauth2.get( 'https://' + domain + '/userinfo',access_token,
-                    (err, result, response) => {
-                        var json = JSON.parse(result);
-                        var profile = new Profile(json, result);
-                    })
-             });
-
-
-        const response = await rp({
-          method: 'POST',
-          url: `https://${domain}/oauth/token`,
-          headers: { 'Auth0-Client': clientInfoHeader,
-                    'content-type': 'application/x-www-form-urlencoded' },
-          form :
-               { grant_type: 'authorization_code',
-                 client_id: clientId,
-                 client_secret: clientSecret,
-                 code: code,
-                 redirect_ui: callbackUrl }
-                 };
-        });
+        const response = await oauth2.getOAuthAccessToken({code})
 
         if (response.error) {
           args.push({ err: response.error, provider });
           return fn(req, res, ...args);
         }
 
-        const accessToken = response.access_token; //are used to call the Auth0 Authentication API's /userinfo endpoint or another API
+        const access_token = response.access_token; //are used to call the Auth0 Authentication API's /userinfo endpoint or another API
         const refresh_token = response.refresh_token; //are used to obtain a new Access Token or ID Token after the previous one has expired.
         const id_token = response.id_token; //  contain user information that must be decoded and extracted.
         const token_type = response.token_type; // Example = "Bearer"
 
-        const user = await rp({
-            method: 'GET',
-          url: `https://${domain}/userinfo`,
-          headers: { 'Authorization': 'Bearer ' + accessToken,
-                    'content-type': 'application/json'}
-        });
-
-        // User Object Reformatting like passport-auth0 strategy
-        user.id = user.user_id || user.sub;
-        user.user_id = user.id;
-        user.name = {
-            familyName: user.family_name,
-            givenName: user.given_name
-          };
-        if (user.emails) {
-        user.all_emails = user.emails.map(function (email) {
-          return { value: email };
-        });
-      } else if (user.email) {
-        user.all_emails = [{
-          value: user.email
-        }];
-      }
+        const info = await oauth2.getProfile({access_token})
 
         const result = {
           provider,
-          accessToken,
+          access_token,
           id_token,
           refresh_token,
           token_type,
-          info: user
+          info
         };
 
         args.push({ result });
