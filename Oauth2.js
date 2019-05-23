@@ -1,5 +1,5 @@
 const OAuth2 = require('oauth').OAuth2
-const jws = require('jws');
+const jws = require('jsonwebtoken'); //Uses jws
 const uuid = require('uuid');
 const jwksClient = require('jwks-rsa');
 const pkg = require('./package.json');
@@ -31,17 +31,44 @@ class Oauth2 {
     }
 
     decodeJws(signature){
-        const jwt = jws.decode(signature)
-        console.log(jwt)
-        return jwt
+        return jws.decode(signature, {complete: true, json:true})
     }
-    verifyToken(signature){
-        var result = false;
-        this.getSecretKey({signature:signature})
-        .then(({algorithm,secretOrKey}) => {
-            result = jws.verify(signature, algorithm, secretOrKey)
+    verifyToken({token}) {
+        var _self = this;
+        return new Promise(function (resolve, reject) {
+            const client = jwksClient({
+                strictSsl: true, // Default value
+                cache: true,
+                cacheMaxEntries: 5, // Default value
+                cacheMaxAge: 10 * 60 * 60 * 1000,  // 10 hours = Default value
+                rateLimit: true,
+                jwksRequestsPerMinute: 60, // Default value
+                jwksUri: 'https://' + _self._domain + '/.well-known/jwks.json',
+            });
+            function getSecretKey(header,callback) {
+                if (header.alg === 'HS256') callback(null, _self._clientSecret) ;
+                else if (header.alg === 'RS256') {
+                    client.getSigningKey(header.kid, (error, key) => {
+                        if (error) callback({error});
+                        else {
+                            var signingKey = key.publicKey || key.rsaPublicKey;
+                            callback(null, signingKey);
+                        }
+                    })
+                }
+                else callback(new Error('Not valid algorithm'));
+            }
+            //console.debug(_self.decodeJws(token))
+            jws.verify(token, getSecretKey, {
+                    algorithms: ["HS256", "RS256"],
+                    audience: _self._clientId,
+                    issuer: 'https://' + _self._domain + '/'
+                }, 
+                (error, decoded) => {
+                    if (error) reject({error})
+                    resolve(decoded)
+            });
         })
-        return result;
     }
     getAuthorizeUrl({state = uuid.v4(), response_type = "code"}) {
         // https://auth0.com/docs/flows/guides/auth-code/add-login-auth-code#authorize-the-user
@@ -68,29 +95,7 @@ class Oauth2 {
                  });
             })
     }
-    getSecretKey({signature}) {
-        var _self = this;
-        const header = _self.decodeJws(signature).header;
-        return new Promise(function (resolve, reject) {
-            if (header.alg === 'HS256') resolve({algorithm: header.alg, secretOrKe: _self._clientSecret}) ;
-            else if (header.alg === 'RS256') {
-                const client = jwksClient({
-                    strictSsl: true, // Default value
-                    jwksUri: 'https://' + _self._domain + '/.well-known/jwks.json',
-                  });
-                client.getSigningKey(header.kid, (error, key) => {
-                    if (error) reject({error});
-                    else {
-                        const signingKey = key.publicKey || key.rsaPublicKey;
-                        resolve({
-                            algorithm: header.alg,
-                            secretOrKey: signingKey})
-                    }
-                })
-            }
-            else reject(new Error('Not valid algorithm'));
-            });
-    }
+    
     getProfile({access_token}) {
         var _self = this;
         return new Promise(function (resolve, reject) {

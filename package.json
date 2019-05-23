@@ -19,8 +19,8 @@
   "author": "Ademar Arvati Filho (https://github.com/arvati)",
   "license": "MIT",
   "dependencies": {
+    "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.5.1",
-    "jws": "^3.2.2",
     "micro-redirect": "^1.0.0",
     "oauth": "^0.9.15",
     "querystring": "^0.2.0",

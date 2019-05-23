@@ -35,6 +35,7 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         const redirectUrl = oauth2.getAuthorizeUrl({});
         const {state} = querystring.parse(url.parse(redirectUrl).query);
         states.push(state);
+        console.debug({states})
         return redirect(res, 302, redirectUrl);
       } catch (err) {
         args.push({ err, provider });
@@ -47,7 +48,8 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
       try {
         const { state, code } = querystring.parse(query);
         if (!states.includes(state)) {
-          const err = new Error('Invalid state');
+          console.debug({states})
+          const err = new Error('Invalid state: ' + state);
           args.push({ err, provider });
           return fn(req, res, ...args);
         }
@@ -65,17 +67,19 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         const id_token = response.id_token; //  contain user information that must be decoded and extracted.
         const token_type = response.token_type; // Example = "Bearer"
 
-        console.log(oauth2.verifyToken(id_token))
+        const decoded_id = await oauth2.verifyToken({token: id_token})
         const info = await oauth2.getProfile({access_token})
 
         const result = {
           provider,
           access_token,
           id_token,
+          decoded_id,
           refresh_token,
           token_type,
           info
         };
+        //console.debug(result);
 
         args.push({ result });
         return fn(req, res, ...args);
