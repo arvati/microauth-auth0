@@ -38,7 +38,6 @@
     "node": ">=7.10.1"
   },
   "files": [
-    "Auth0.js",
-    "Profile.js"
+    "Auth0.js"
   ]
 }

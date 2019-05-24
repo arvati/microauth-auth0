@@ -3,7 +3,6 @@ const jws = require('jsonwebtoken'); //Uses jws
 const uuid = require('uuid');
 const jwksClient = require('jwks-rsa');
 const pkg = require('./package.json');
-const Profile = require('./Profile');
 
 function encodeClientInfo(obj) {
     const str = JSON.stringify(obj);
@@ -33,7 +32,7 @@ class Auth0 {
     decodeJws(signature){
         return jws.decode(signature, {complete: true, json:true})
     }
-    verifyToken({token}) {
+    verifyToken({token, audience = this._clientId, algorithms = ["HS256", "RS256"]}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
             const client = jwksClient({
@@ -60,8 +59,8 @@ class Auth0 {
             }
             //console.debug(_self.decodeJws(token))
             jws.verify(token, SecretKey, {
-                    algorithms: ["HS256", "RS256"],
-                    audience: _self._clientId,
+                    algorithms,
+                    audience,
                     issuer: 'https://' + _self._domain + '/',
                     complete: true,
                     ignoreExpiration: false
@@ -98,16 +97,14 @@ class Auth0 {
             })
     }
     
-    getProfile({access_token}) {
+    getUserInfo({token}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
-            _self._oauth2.get( 'https://' + _self._domain + '/userinfo',access_token,
+            _self._oauth2.get( 'https://' + _self._domain + '/userinfo',token,
             (error, result, response) => {
                 if (error) reject({error});
                 else {
-                    const json = JSON.parse(result);
-                    const profile = new Profile(json, result);
-                    resolve({profile})
+                    resolve(JSON.parse(result))
                 }
             })
         })

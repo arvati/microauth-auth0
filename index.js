@@ -5,7 +5,7 @@ const Auth0 = require('./Auth0');
 
 const provider = 'auth0';
 
-const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, path = '/auth/auth0', scope = 'openid email profile offline_access', scopeSeparator = ' ' }) => {
+const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, path = '/auth/auth0', scope = 'openid email profile offline_access' }) => {
   ['domain',
       'clientId',
       'clientSecret',
@@ -14,8 +14,8 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         throw new Error('You must provide the ' + k + ' configuration value to use microauth-auth0.');
       }
     });
-    // optionally scope as array and scope separator to be used.
-    if (Array.isArray(scope)) { scope = scope.join(scopeSeparator); }
+  // optionally scope as array 
+  if (Array.isArray(scope)) { scope = scope.join(' '); }
   const states = [];
   const params = {
     clientId, 
@@ -55,29 +55,24 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         }
         states.splice(states.indexOf(state), 1);
 
-        const response = await auth0.getOAuthAccessToken({code})
+        const tokens = await auth0.getOAuthAccessToken({code})
 
-        if (response.error) {
-          args.push({ err: response.error, provider });
+        if (tokens.error) {
+          args.push({ err: tokens.error, provider });
           return fn(req, res, ...args);
         }
 
-        const access_token = response.access_token; //are used to call the Auth0 Authentication API's /userinfo endpoint or another API
-        const refresh_token = response.refresh_token; //are used to obtain a new Access Token or ID Token after the previous one has expired.
-        const id_token = response.id_token; //  contain user information that must be decoded and extracted.
-        const token_type = response.token_type; // Example = "Bearer"
-
-        const decoded_id = await auth0.verifyToken({token: id_token})
-        const info = await auth0.getProfile({access_token})
+        const user = await auth0.getUserInfo({token: tokens.access_token})
+        const token = await auth0.verifyToken({token: tokens.id_token})
 
         const result = {
           provider,
-          access_token,
-          id_token,
-          decoded_id,
-          refresh_token,
-          token_type,
-          info
+          accessToken: tokens.access_token,
+          tokens,
+          info: {
+            user,
+            token
+          }
         };
         //console.debug(result);
 
