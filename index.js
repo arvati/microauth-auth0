@@ -27,7 +27,7 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
   }
   const auth0 = new Auth0(params);
 
-  return fn => async (req, res, ...args) => {
+  return middleware = (next) => { return handler = async (req, res, ...args) => {
     const { pathname, query } = url.parse(req.url);
 
     if (pathname === path) {
@@ -39,31 +39,38 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         return redirect(res, 302, redirectUrl);
       } catch (err) {
         args.push({ err, provider });
-        return fn(req, res, ...args);
+        return next(req, res, ...args);
       }
     }
 
-    const callbackPath = url.parse(callbackUrl).pathname;
-    if (pathname === callbackPath) {
+    if (pathname === url.parse(callbackUrl).pathname) {
       try {
         const { state, code } = querystring.parse(query);
         if (!states.includes(state)) {
           //console.debug({states})
           const err = new Error('Invalid state: ' + state);
           args.push({ err, provider });
-          return fn(req, res, ...args);
+          return next(req, res, ...args);
         }
         states.splice(states.indexOf(state), 1);
 
         const tokens = await auth0.getOAuthAccessToken({code})
-
         if (tokens.error) {
           args.push({ err: tokens.error, provider });
-          return fn(req, res, ...args);
+          return next(req, res, ...args);
         }
 
         const user = await auth0.getUserInfo({token: tokens.access_token})
+        if (user.error) {
+          args.push({ err: user.error, provider });
+          return next(req, res, ...args);
+        }
+
         const token = await auth0.verifyToken({token: tokens.id_token})
+        if (token.error) {
+          args.push({ err: token.error, provider });
+          return next(req, res, ...args);
+        }
 
         const result = {
           provider,
@@ -74,18 +81,16 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
             token
           }
         };
-        //console.debug(result);
-
         args.push({ result });
-        return fn(req, res, ...args);
+        return next(req, res, ...args);
       } catch (err) {
         args.push({ err, provider });
-        return fn(req, res, ...args);
+        return next(req, res, ...args);
       }
     }
 
-    return fn(req, res, ...args)
-  }
+    return next(req, res, ...args)
+  }}
 };
 
 module.exports = microAuth0;
