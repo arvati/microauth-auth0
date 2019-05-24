@@ -108,6 +108,7 @@ Authentication:
 ** audience
 ** client_id and client_secret
 ** scope
+* resource owner enabled connection of one of the following strategies: auth0-adldap, ad, auth0, email, sms, waad or adfs
 
 Request token without user login and user id
 ----
@@ -121,6 +122,28 @@ Request token without user login and user id
 * client_id
 * client_secret
 * audience
+
+Basic or Post Authentication
+----
+* https://community.auth0.com/t/token-endpoint-authentication-method-http-basic-what-is-it/8917/2  
+
+Still POST (Content-Type: application/x-www-form-urlencoded) but client id and client secret goes into header not into body.   
+Must before exclude colon ":" from username.
+
+```js
+var username = 'Test';
+var password = '123';
+var auth = 'Basic ' + Buffer.from(username.replace(/:\s*/g, '') + ':' + password).toString('base64');
+// new Buffer() is deprecated from v6
+//var auth = "Basic " + new Buffer(username + ":" + password).toString("base64");
+
+// auth is: 'Basic VGVzdDoxMjM='
+var header = {
+    'Host': 'www.example.com', 
+    'Authorization': auth
+    };
+var request = client.request('GET', '/', header);
+```
 
 
 
