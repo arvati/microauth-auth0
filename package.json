@@ -38,7 +38,7 @@
     "node": ">=7.10.1"
   },
   "files": [
-    "Oauth2.js",
+    "Auth0.js",
     "Profile.js"
   ]
 }

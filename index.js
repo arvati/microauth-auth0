@@ -1,7 +1,7 @@
 const querystring = require('querystring');
 const url = require('url');
 const redirect = require('micro-redirect');
-const Oauth2 = require('./Oauth2');
+const Auth0 = require('./Auth0');
 
 const provider = 'auth0';
 
@@ -25,17 +25,17 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
     connection,
     scope
   }
-  const oauth2 = new Oauth2(params);
+  const auth0 = new Auth0(params);
 
   return fn => async (req, res, ...args) => {
     const { pathname, query } = url.parse(req.url);
 
     if (pathname === path) {
       try {
-        const redirectUrl = oauth2.getAuthorizeUrl({});
+        const redirectUrl = auth0.getAuthorizeUrl({});
         const {state} = querystring.parse(url.parse(redirectUrl).query);
         states.push(state);
-        console.debug({states})
+        //console.debug({states})
         return redirect(res, 302, redirectUrl);
       } catch (err) {
         args.push({ err, provider });
@@ -48,14 +48,14 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
       try {
         const { state, code } = querystring.parse(query);
         if (!states.includes(state)) {
-          console.debug({states})
+          //console.debug({states})
           const err = new Error('Invalid state: ' + state);
           args.push({ err, provider });
           return fn(req, res, ...args);
         }
         states.splice(states.indexOf(state), 1);
 
-        const response = await oauth2.getOAuthAccessToken({code})
+        const response = await auth0.getOAuthAccessToken({code})
 
         if (response.error) {
           args.push({ err: response.error, provider });
@@ -67,8 +67,8 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         const id_token = response.id_token; //  contain user information that must be decoded and extracted.
         const token_type = response.token_type; // Example = "Bearer"
 
-        const decoded_id = await oauth2.verifyToken({token: id_token})
-        const info = await oauth2.getProfile({access_token})
+        const decoded_id = await auth0.verifyToken({token: id_token})
+        const info = await auth0.getProfile({access_token})
 
         const result = {
           provider,

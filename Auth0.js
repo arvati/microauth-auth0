@@ -14,7 +14,7 @@ function encodeClientInfo(obj) {
   }
   
 
-class Oauth2 {
+class Auth0 {
     constructor({clientId, clientSecret, domain, callbackUrl, connection, scope}) {
         this._clientId = clientId;
         this._callbackUrl = callbackUrl;
@@ -45,7 +45,7 @@ class Oauth2 {
                 jwksRequestsPerMinute: 60, // Default value
                 jwksUri: 'https://' + _self._domain + '/.well-known/jwks.json',
             });
-            function getSecretKey(header,callback) {
+            const SecretKey = (header,callback) => {
                 if (header.alg === 'HS256') callback(null, _self._clientSecret) ;
                 else if (header.alg === 'RS256') {
                     client.getSigningKey(header.kid, (error, key) => {
@@ -56,13 +56,15 @@ class Oauth2 {
                         }
                     })
                 }
-                else callback(new Error('Not valid algorithm'));
+                else callback(new Error('Not valid algorithm: ' + header.alg));
             }
             //console.debug(_self.decodeJws(token))
-            jws.verify(token, getSecretKey, {
+            jws.verify(token, SecretKey, {
                     algorithms: ["HS256", "RS256"],
                     audience: _self._clientId,
-                    issuer: 'https://' + _self._domain + '/'
+                    issuer: 'https://' + _self._domain + '/',
+                    complete: true,
+                    ignoreExpiration: false
                 }, 
                 (error, decoded) => {
                     if (error) reject({error})
@@ -111,4 +113,4 @@ class Oauth2 {
         })
     }
 };
-module.exports = Oauth2;
+module.exports = Auth0;
