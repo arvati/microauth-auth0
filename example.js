@@ -7,9 +7,11 @@ const options = {
   clientId: process.env.AUTH0_CLIENT_ID,
   clientSecret: process.env.AUTH0_CLIENT_SECRET,
   callbackUrl: process.env.AUTH0_CALLBACKURL, // 'http://localhost:3000/auth/auth0/callback'
-  connection: null, // Forces the user to sign in with a specific connection
+  connection: process.env.AUTH0_CONNECTION, // Forces the user to sign in with a specific connection
   path: '/auth/auth0',
-  scope: 'openid email address phone profile offline_access'
+  scope: 'openid email address phone profile',
+  noState: true, // disables state parameter (not recomended)
+  basicAuth: true
 };
 
 const auth0 = microAuthAuth0(options);

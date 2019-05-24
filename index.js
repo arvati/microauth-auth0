@@ -5,7 +5,17 @@ const Auth0 = require('./Auth0');
 
 const provider = 'auth0';
 
-const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, path = '/auth/auth0', scope = 'openid email profile offline_access' }) => {
+const microAuth0 = ({ 
+                      domain, 
+                      clientId, 
+                      clientSecret, 
+                      callbackUrl, 
+                      connection, 
+                      path = '/auth/auth0', 
+                      scope = 'openid email profile', 
+                      noState = false,
+                      basicAuth = false
+                    }) => {
   ['domain',
       'clientId',
       'clientSecret',
@@ -23,7 +33,8 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
     domain, 
     callbackUrl,
     connection,
-    scope
+    scope,
+    noState
   }
   const auth0 = new Auth0(params);
 
@@ -33,9 +44,10 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
     if (pathname === path) {
       try {
         const redirectUrl = auth0.getAuthorizeUrl({});
-        const {state} = querystring.parse(url.parse(redirectUrl).query);
-        states.push(state);
-        //console.debug({states})
+        if (!auth0.getNoState()) {
+          const {state} = querystring.parse(url.parse(redirectUrl).query);
+          states.push(state);
+        }
         return redirect(res, 302, redirectUrl);
       } catch (err) {
         args.push({ err, provider });
@@ -46,8 +58,7 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
     if (pathname === url.parse(callbackUrl).pathname) {
       try {
         const { state, code } = querystring.parse(query);
-        if (!states.includes(state)) {
-          //console.debug({states})
+        if (!auth0.getNoState() && !states.includes(state)) {
           const err = new Error('Invalid state: ' + state);
           args.push({ err, provider });
           return next(req, res, ...args);
@@ -55,6 +66,7 @@ const microAuth0 = ({ domain, clientId, clientSecret, callbackUrl, connection, p
         states.splice(states.indexOf(state), 1);
 
         const tokens = await auth0.getOAuthAccessToken({code})
+        // refresh token only if scope = offline_access
         if (tokens.error) {
           args.push({ err: tokens.error, provider });
           return next(req, res, ...args);

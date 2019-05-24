@@ -6,21 +6,22 @@ const pkg = require('./package.json');
 
 function encodeClientInfo(obj) {
     const str = JSON.stringify(obj);
-    return new Buffer(str).toString('base64')
+    return Buffer.from(str).toString('base64')
         .replace(/\+/g, '-') // Convert '+' to '-'
         .replace(/\//g, '_') // Convert '/' to '_'
-        .replace(/=+$/, ''); // Remove ending '='
+        .replace(/=+$/, '') // Remove ending '='
   }
   
 
 class Auth0 {
-    constructor({clientId, clientSecret, domain, callbackUrl, connection, scope}) {
+    constructor({clientId, clientSecret, domain, callbackUrl, connection, scope, noState}) {
         this._clientId = clientId;
         this._callbackUrl = callbackUrl;
         this._connection = connection;
         this._scope = scope;
         this._clientSecret = clientSecret;
         this._domain = domain;
+        this._noState = noState;
         this._clientInfoHeader = encodeClientInfo({ name: pkg.name, version: pkg.version });
         this._oauth2 = new OAuth2(this._clientId, this._clientSecret,
             'https://' + this._domain, '/authorize', '/oauth/token', { 'Auth0-Client': this._clientInfoHeader});
@@ -77,10 +78,13 @@ class Auth0 {
             response_type:response_type,
             client_id:this._clientId,
             redirect_uri:this._callbackUrl,
-            scope:this._scope, 
-            state:state}
+            scope:this._scope}
+        if (!this._noState) params.state = state
         if (this._connection) params.connection = this._connection
         return this._oauth2.getAuthorizeUrl(params)
+    }
+    getNoState(){
+        return this._noState // With encoded state force this to true
     }
 
     getOAuthAccessToken({code, grant_type = 'authorization_code'}) {
