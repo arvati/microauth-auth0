@@ -171,3 +171,8 @@ Multifactor authentication
 * https://auth0.com/docs/api-auth/tutorials/multifactor-resource-owner-password
 * https://auth0.com/docs/multifactor-authentication
 
+
+Passwords Lists
+----
+* https://github.com/danielmiessler/SecLists
+* https://haveibeenpwned.com/API/v2
