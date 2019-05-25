@@ -8,10 +8,14 @@ const options = {
   clientSecret: process.env.AUTH0_CLIENT_SECRET,
   callbackUrl: process.env.AUTH0_CALLBACKURL, // 'http://localhost:3000/auth/auth0/callback'
   connection: process.env.AUTH0_CONNECTION, // Forces the user to sign in with a specific connection
+  audience: process.env.AUTH0_AUDIENCE, // Your API Identifier
   path: '/auth/auth0',
   scope: 'openid email address phone profile',
   noState: true, // disables state parameter (not recomended)
-  basicAuth: false // default
+  basicAuth: false, // false to use post method
+  send_ip: true, // send auth0-forwarded-for header
+  algorithm: "HS256 RS256", // allowed algorithm to verify jwt tokens for - "HS256" or "RS256"
+  allowPost: true // allow sending credentials with POST
 };
 
 const auth0 = microAuthAuth0(options);
@@ -30,6 +34,7 @@ const handler = async (req, res, auth) => {
 
   // Save something in database here
 
+  return auth;
   return `Hello ${auth.result.info.user.nickname} !`;
 
 };

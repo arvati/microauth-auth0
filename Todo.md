@@ -160,6 +160,11 @@ API Authentication
 * parameter access token or as a autentication bearer
 * see micro-jwt-auth = https://github.com/kandros/micro-jwt-auth
 
+Set callBackUrl relative
+----
+Concatenate Host header <host>:<port> with callback url when there is not a domain
+* https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Headers
+
 
 Multifactor authentication
 ----

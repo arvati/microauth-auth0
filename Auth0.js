@@ -22,9 +22,13 @@ class Auth0 {
                     domain, 
                     callbackUrl, 
                     connection, 
+                    audience,
                     scope, 
                     noState, 
-                    basicAuth
+                    basicAuth,
+                    send_ip,
+                    algorithm,
+                    allowPost
                 }) {
         this._customHeaders = {
             "Auth0-Client": encodeClientInfo({ name: pkg.name, version: pkg.version })
@@ -32,12 +36,17 @@ class Auth0 {
         this._clientId = clientId;
         this._callbackUrl = callbackUrl;
         this._connection = connection;
+        this._audience = audience;
         this._scope = scope;
         this._clientSecret = clientSecret;
         this._domain = domain;
         this._noState = noState;
+        this._send_ip = send_ip;
+        this._algorithm = algorithm;
+        this._allowPost = allowPost;
         this._basicAuth = !this._clientSecret ? false : basicAuth // Only Basic Auth when we have a password
         if (this._basicAuth) this._customHeaders["Authorization"] = encodeBasicHeader({username: this._clientId, password: this._clientSecret});
+        if (this._send_ip) this._customHeaders["auth0-forwarded-for"] = this._send_ip
         this._oauth2 = new OAuth2(this._clientId, this._clientSecret,
             'https://' + this._domain, '/authorize', '/oauth/token', this._customHeaders);
         this._oauth2.useAuthorizationHeaderforGET(true);
@@ -50,7 +59,23 @@ class Auth0 {
     decodeJws(signature){
         return jws.decode(signature, {complete: true, json:true})
     }
-    verifyToken({token, audience = this._clientId, algorithms = ["HS256", "RS256"]}) {
+    async verifyIdToken(token){
+        try {
+            // only verify token if scope contains openid
+            return !this._scope.split(' ').includes('openid') ? {} : await this.verifyToken({token, audience: this._clientId})
+        } catch (error) {
+            return error
+        }
+    }
+    async verifyApiToken(token){
+        try {
+            // only verify token if audience is set
+            return !this._audience ? {} : await this.verifyToken({token, audience: this._audience})
+        } catch (error) {
+            return error
+        }
+    }
+    verifyToken({token, audience, algorithms = this._algorithm}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
             const client = jwksClient({
@@ -63,7 +88,7 @@ class Auth0 {
                 jwksUri: 'https://' + _self._domain + '/.well-known/jwks.json',
             });
             const SecretKey = (header,callback) => {
-                if (header.alg === 'HS256') callback(null, _self._clientSecret) ;
+                if (header.alg === 'HS256' && _self._clientSecret) callback(null, _self._clientSecret) ;
                 else if (header.alg === 'RS256') {
                     client.getSigningKey(header.kid, (error, key) => {
                         if (error) callback({error});
@@ -75,9 +100,8 @@ class Auth0 {
                 }
                 else callback(new Error('Not valid algorithm: ' + header.alg));
             }
-            //console.debug(_self.decodeJws(token))
             jws.verify(token, SecretKey, {
-                    algorithms,
+                    algorithms: algorithms.split(" "),
                     audience,
                     issuer: 'https://' + _self._domain + '/',
                     complete: true,
@@ -85,7 +109,9 @@ class Auth0 {
                 }, 
                 (error, decoded) => {
                     if (error) reject({error})
-                    resolve(decoded)
+                    else {
+                        resolve(decoded)
+                    }
             });
         })
     }
@@ -95,7 +121,9 @@ class Auth0 {
             response_type:response_type,
             client_id:this._clientId,
             redirect_uri:this._callbackUrl,
-            scope:this._scope}
+            scope:this._scope
+        }
+        if (this._audience) params.audience = this._audience
         if (!this._noState) params.state = state
         if (this._connection) params.connection = this._connection
         return this._oauth2.getAuthorizeUrl(params)
@@ -117,12 +145,18 @@ class Auth0 {
                 delete params["client_id"];
                 delete params["client_secret"];
             }
-            console.debug(params)
             _self._oauth2.getOAuthAccessToken(code, params, 
                  (error, access_token, refresh_token, results) => {
                     if (error) reject({error});
                     else {
-                        resolve({access_token, refresh_token, id_token: results.id_token, token_type: results.token_type})
+                        resolve({
+                            access_token, 
+                            refresh_token, 
+                            id_token: results.id_token, 
+                            token_type: results.token_type,
+                            expires_in: results.expires_in,
+                            scope: results.scope
+                        })
                     }
                  });
             })

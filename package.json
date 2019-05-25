@@ -19,6 +19,7 @@
   "author": "Ademar Arvati Filho (https://github.com/arvati)",
   "license": "MIT",
   "dependencies": {
+    "ipware": "^2.0.0",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.5.1",
     "micro-redirect": "^1.0.0",
