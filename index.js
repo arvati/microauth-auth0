@@ -34,7 +34,8 @@ const microAuth0 = ({
     callbackUrl,
     connection,
     scope,
-    noState
+    noState,
+    basicAuth
   }
   const auth0 = new Auth0(params);
 

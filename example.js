@@ -11,7 +11,7 @@ const options = {
   path: '/auth/auth0',
   scope: 'openid email address phone profile',
   noState: true, // disables state parameter (not recomended)
-  basicAuth: true
+  basicAuth: false // default
 };
 
 const auth0 = microAuthAuth0(options);

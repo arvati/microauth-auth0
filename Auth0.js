@@ -10,11 +10,25 @@ function encodeClientInfo(obj) {
         .replace(/\+/g, '-') // Convert '+' to '-'
         .replace(/\//g, '_') // Convert '/' to '_'
         .replace(/=+$/, '') // Remove ending '='
-  }
-  
+}
+function encodeBasicHeader({username, password}) {
+    return 'Basic ' + Buffer.from(username.replace(/:\s*/g, '') + ':' + password).toString('base64');
+}
 
 class Auth0 {
-    constructor({clientId, clientSecret, domain, callbackUrl, connection, scope, noState}) {
+    constructor({
+                    clientId, 
+                    clientSecret, 
+                    domain, 
+                    callbackUrl, 
+                    connection, 
+                    scope, 
+                    noState, 
+                    basicAuth
+                }) {
+        this._customHeaders = {
+            "Auth0-Client": encodeClientInfo({ name: pkg.name, version: pkg.version })
+        }
         this._clientId = clientId;
         this._callbackUrl = callbackUrl;
         this._connection = connection;
@@ -22,13 +36,16 @@ class Auth0 {
         this._clientSecret = clientSecret;
         this._domain = domain;
         this._noState = noState;
-        this._clientInfoHeader = encodeClientInfo({ name: pkg.name, version: pkg.version });
+        this._basicAuth = !this._clientSecret ? false : basicAuth // Only Basic Auth when we have a password
+        if (this._basicAuth) this._customHeaders["Authorization"] = encodeBasicHeader({username: this._clientId, password: this._clientSecret});
         this._oauth2 = new OAuth2(this._clientId, this._clientSecret,
-            'https://' + this._domain, '/authorize', '/oauth/token', { 'Auth0-Client': this._clientInfoHeader});
+            'https://' + this._domain, '/authorize', '/oauth/token', this._customHeaders);
         this._oauth2.useAuthorizationHeaderforGET(true);
         this._oauth2.setAccessTokenName("access_token");
         this._oauth2.setAuthMethod("Bearer");
     }
+
+
 
     decodeJws(signature){
         return jws.decode(signature, {complete: true, json:true})
@@ -90,8 +107,18 @@ class Auth0 {
     getOAuthAccessToken({code, grant_type = 'authorization_code'}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
-            _self._oauth2.getOAuthAccessToken(code,
-                { grant_type: grant_type, client_id: _self._clientId, client_secret: _self._clientSecret, redirect_uri: _self._callbackUrl },
+            const params = { 
+                grant_type: grant_type, 
+                client_id: _self._clientId, 
+                client_secret: _self._clientSecret, 
+                redirect_uri: _self._callbackUrl 
+            }
+            if (_self._basicAuth) {
+                delete params["client_id"];
+                delete params["client_secret"];
+            }
+            console.debug(params)
+            _self._oauth2.getOAuthAccessToken(code, params, 
                  (error, access_token, refresh_token, results) => {
                     if (error) reject({error});
                     else {
