@@ -15,7 +15,9 @@ const options = {
   basicAuth: false, // false to use post method
   send_ip: true, // send auth0-forwarded-for header
   algorithm: "HS256 RS256", // allowed algorithm to verify jwt tokens for - "HS256" or "RS256"
-  allowPost: true // allow sending credentials with POST
+  allowPost: true, // allow sending credentials with POST
+  realm: process.env.AUTH0_CONNECTION,
+  PKCE: true
 };
 
 const auth0 = microAuthAuth0(options);

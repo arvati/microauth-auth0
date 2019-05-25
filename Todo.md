@@ -101,13 +101,13 @@ Authentication:
 * endpoint = /oauth/token
 * application/x-www-form-urlencoded
 * Post Body
-** grant_type=password or grant_type=http://auth0.com/oauth/grant-type/password-realm
-** realm if grant_type not password with name of realm (see connection in dashboard)
-** username
-** password
-** audience
-** client_id and client_secret
-** scope
+    * grant_type=password or grant_type=http://auth0.com/oauth/grant-type/password-realm
+    * realm if grant_type not password with name of realm (see connection in dashboard)
+    * username
+    * password
+    * audience
+    * client_id and client_secret
+    * scope
 * resource owner enabled connection of one of the following strategies: auth0-adldap, ad, auth0, email, sms, waad or adfs
 
 Request token without user login and user id

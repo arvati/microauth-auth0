@@ -1,5 +1,6 @@
 const querystring = require('querystring');
 const url = require('url');
+const crypto = require('crypto');
 const redirect = require('micro-redirect');
 const get_ip = require('ipware')().get_ip;
 const json = require('micro').json;
@@ -21,7 +22,9 @@ const microAuth0 = ({
                       basicAuth = false,
                       send_ip = false,
                       algorithm = "HS256 RS256",
-                      allowPost = false
+                      allowPost = false,
+                      realm,
+                      PKCE = false
                     }) => {
   ['domain',
       'clientId',
@@ -33,7 +36,12 @@ const microAuth0 = ({
     });
   // optionally scope as array 
   if (Array.isArray(scope)) { scope = scope.join(' '); }
-  
+  const code_verifier = !PKCE ? null : crypto
+            .randomBytes(32)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
   const states = [];
   return middleware = (next) => { return handler = async (req, res, ...args) => {
     if (send_ip) {
@@ -52,7 +60,9 @@ const microAuth0 = ({
       basicAuth,
       send_ip,
       algorithm,
-      allowPost
+      allowPost,
+      realm,
+      code_verifier
     }
     const auth0 = new Auth0(params);
     const { pathname, query } = url.parse(req.url);

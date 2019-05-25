@@ -1,6 +1,7 @@
 const OAuth2 = require('oauth').OAuth2
 const jws = require('jsonwebtoken'); //Uses jws
 const uuid = require('uuid');
+const crypto = require('crypto');
 const jwksClient = require('jwks-rsa');
 const pkg = require('./package.json');
 
@@ -28,7 +29,9 @@ class Auth0 {
                     basicAuth,
                     send_ip,
                     algorithm,
-                    allowPost
+                    allowPost,
+                    realm,
+                    code_verifier
                 }) {
         this._customHeaders = {
             "Auth0-Client": encodeClientInfo({ name: pkg.name, version: pkg.version })
@@ -44,6 +47,8 @@ class Auth0 {
         this._send_ip = send_ip;
         this._algorithm = algorithm;
         this._allowPost = allowPost;
+        this._realm = realm;
+        this._code_verifier = code_verifier
         this._basicAuth = !this._clientSecret ? false : basicAuth // Only Basic Auth when we have a password
         if (this._basicAuth) this._customHeaders["Authorization"] = encodeBasicHeader({username: this._clientId, password: this._clientSecret});
         if (this._send_ip) this._customHeaders["auth0-forwarded-for"] = this._send_ip
@@ -119,10 +124,21 @@ class Auth0 {
         // https://auth0.com/docs/flows/guides/auth-code/add-login-auth-code#authorize-the-user
         const params = {
             response_type:response_type,
-            client_id:this._clientId,
-            redirect_uri:this._callbackUrl,
-            scope:this._scope
+            client_id:this._clientId
         }
+        if (this.code_verifier) {
+            params.code_challenge_method = 'S256'
+            params.code_challenge = crypto
+                                .createHash('sha256')
+                                .update(this.code_verifier)
+                                .digest()
+                                .toString('base64')
+                                .replace(/\+/g, '-')
+                                .replace(/\//g, '_')
+                                .replace(/=/g, '')
+        }
+        if (this._callbackUrl) params.redirect_uri = this._callbackUrl
+        if (this._scope) params.scope = this._scope
         if (this._audience) params.audience = this._audience
         if (!this._noState) params.state = state
         if (this._connection) params.connection = this._connection
@@ -132,7 +148,7 @@ class Auth0 {
         return this._noState // With encoded state force this to true
     }
 
-    getOAuthAccessToken({code, grant_type = 'authorization_code'}) {
+    getOAuthAccessToken({code, grant_type = 'authorization_code', username, password, refresh_token}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
             const params = { 
@@ -145,6 +161,40 @@ class Auth0 {
                 delete params["client_id"];
                 delete params["client_secret"];
             }
+            if (grant_type === 'password') {
+                // Make sure there are all parameters set
+                if (!username || !password || !_self._clientSecret || !_self._allowPost) 
+                    reject(new Error('This grant type \"' + grant_type + '\" requires clientSecret, allowPost and user credentials' ))
+                // if audience set and alloPost set to realm change grant_type to it
+                if (_self._realm) {
+                    params.grant_type = 'http://auth0.com/oauth/grant-type/password-realm'
+                    params.realm = _self._realm
+                }
+                if (_self._audience) params.audience = _self._audience
+                if (_self._scope) params.scope = _self._scope
+                params.username = username
+                params.password = password
+                code = null
+            } else if (grant_type === 'client_credentials') {
+                if (!_self._clientSecret || !_self._audience) 
+                    reject(new Error('This grant type \"' + grant_type + '\" requires clientSecret and audience' ))
+                params.audience = _self._audience
+                code = null
+            } else if (grant_type === 'refresh_token') {
+                if (!refresh_token) 
+                    reject(new Error('This grant type \"' + grant_type + '\" requires refresh_token' ))
+                params.refresh_token = refresh_token
+                code = null
+            } else if (grant_type === 'authorization_code') {
+                if (!code) 
+                    reject(new Error('This grant type \"' + grant_type + '\" requires code received from /authorize' ))
+                if (_self._callbackUrl) params.redirect_uri = _self._callbackUrl
+                if (_self._code_verifier) {
+                    params.code_verifier = _self._code_verifier
+                    params.client_id = _self._clientId // force client_id
+                }
+            }
+
             _self._oauth2.getOAuthAccessToken(code, params, 
                  (error, access_token, refresh_token, results) => {
                     if (error) reject({error});
