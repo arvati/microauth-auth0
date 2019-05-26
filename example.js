@@ -11,13 +11,14 @@ const options = {
   audience: process.env.AUTH0_AUDIENCE, // Your API Identifier
   path: '/auth/auth0',
   scope: 'openid email address phone profile',
-  noState: true, // disables state parameter (not recomended)
+  noState: false, // disables state parameter (not recomended)
   basicAuth: false, // false to use post method
   send_ip: true, // send auth0-forwarded-for header
   algorithm: "HS256 RS256", // allowed algorithm to verify jwt tokens for - "HS256" or "RS256"
   allowPost: true, // allow sending credentials with POST
   realm: process.env.AUTH0_CONNECTION,
-  PKCE: true
+  PKCE: true,
+  silentPrompt : false
 };
 
 const auth0 = microAuthAuth0(options);

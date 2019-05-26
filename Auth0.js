@@ -15,6 +15,16 @@ function encodeClientInfo(obj) {
 function encodeBasicHeader({username, password}) {
     return 'Basic ' + Buffer.from(username.replace(/:\s*/g, '') + ':' + password).toString('base64');
 }
+function encodeChallenge(verifier) {
+    return crypto
+    .createHash('sha256')
+    .update(verifier)
+    .digest()
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '')
+}
 
 class Auth0 {
     constructor({
@@ -31,7 +41,8 @@ class Auth0 {
                     algorithm,
                     allowPost,
                     realm,
-                    code_verifier
+                    code_verifier,
+                    silentPrompt
                 }) {
         this._customHeaders = {
             "Auth0-Client": encodeClientInfo({ name: pkg.name, version: pkg.version })
@@ -48,12 +59,18 @@ class Auth0 {
         this._algorithm = algorithm;
         this._allowPost = allowPost;
         this._realm = realm;
-        this._code_verifier = code_verifier
+        this._code_verifier = code_verifier;
+        this._silentPrompt = silentPrompt;
         this._basicAuth = !this._clientSecret ? false : basicAuth // Only Basic Auth when we have a password
         if (this._basicAuth) this._customHeaders["Authorization"] = encodeBasicHeader({username: this._clientId, password: this._clientSecret});
         if (this._send_ip) this._customHeaders["auth0-forwarded-for"] = this._send_ip
-        this._oauth2 = new OAuth2(this._clientId, this._clientSecret,
-            'https://' + this._domain, '/authorize', '/oauth/token', this._customHeaders);
+        this._oauth2 = new OAuth2(this._clientId, 
+            this._clientSecret,
+            'https://' + this._domain, 
+            '/authorize', 
+            '/oauth/token', 
+            this._customHeaders
+        );
         this._oauth2.useAuthorizationHeaderforGET(true);
         this._oauth2.setAccessTokenName("access_token");
         this._oauth2.setAuthMethod("Bearer");
@@ -64,21 +81,11 @@ class Auth0 {
     decodeJws(signature){
         return jws.decode(signature, {complete: true, json:true})
     }
-    async verifyIdToken(token){
-        try {
-            // only verify token if scope contains openid
-            return !this._scope.split(' ').includes('openid') ? {} : await this.verifyToken({token, audience: this._clientId})
-        } catch (error) {
-            return error
-        }
+    async verifyIdToken(token){ // only verify token if scope contains openid
+        return !this._scope.split(' ').includes('openid') ? {} : await this.verifyToken({token, audience: this._clientId}).catch(e => {throw new Error(e)});
     }
-    async verifyApiToken(token){
-        try {
-            // only verify token if audience is set
-            return !this._audience ? {} : await this.verifyToken({token, audience: this._audience})
-        } catch (error) {
-            return error
-        }
+    async verifyApiToken(token){ // only verify token if audience is set
+        return !this._audience ? {} : await this.verifyToken({token, audience: this._audience}).catch(e => {throw new Error(e)});
     }
     verifyToken({token, audience, algorithms = this._algorithm}) {
         var _self = this;
@@ -96,24 +103,24 @@ class Auth0 {
                 if (header.alg === 'HS256' && _self._clientSecret) callback(null, _self._clientSecret) ;
                 else if (header.alg === 'RS256') {
                     client.getSigningKey(header.kid, (error, key) => {
-                        if (error) callback({error});
+                        if (error) callback(error);
                         else {
                             var signingKey = key.publicKey || key.rsaPublicKey;
                             callback(null, signingKey);
                         }
                     })
                 }
-                else callback(new Error('Not valid algorithm: ' + header.alg));
+                else callback('Not valid algorithm: ' + header.alg);
             }
             jws.verify(token, SecretKey, {
                     algorithms: algorithms.split(" "),
                     audience,
                     issuer: 'https://' + _self._domain + '/',
-                    complete: true,
+                    complete: false,
                     ignoreExpiration: false
                 }, 
-                (error, decoded) => {
-                    if (error) reject({error})
+                (err, decoded) => {
+                    if (err) reject(err);
                     else {
                         resolve(decoded)
                     }
@@ -126,17 +133,11 @@ class Auth0 {
             response_type:response_type,
             client_id:this._clientId
         }
-        if (this.code_verifier) {
+        if (this._code_verifier) {
             params.code_challenge_method = 'S256'
-            params.code_challenge = crypto
-                                .createHash('sha256')
-                                .update(this.code_verifier)
-                                .digest()
-                                .toString('base64')
-                                .replace(/\+/g, '-')
-                                .replace(/\//g, '_')
-                                .replace(/=/g, '')
+            params.code_challenge = encodeChallenge(this._code_verifier)
         }
+        if (this._silentPrompt) params.prompt = 'none'
         if (this._callbackUrl) params.redirect_uri = this._callbackUrl
         if (this._scope) params.scope = this._scope
         if (this._audience) params.audience = this._audience
@@ -194,10 +195,9 @@ class Auth0 {
                     params.client_id = _self._clientId // force client_id
                 }
             }
-
             _self._oauth2.getOAuthAccessToken(code, params, 
-                 (error, access_token, refresh_token, results) => {
-                    if (error) reject({error});
+                 (err, access_token, refresh_token, results) => {
+                    if (err) reject(err);
                     else {
                         resolve({
                             access_token, 
@@ -216,8 +216,8 @@ class Auth0 {
         var _self = this;
         return new Promise(function (resolve, reject) {
             _self._oauth2.get( 'https://' + _self._domain + '/userinfo',token,
-            (error, result, response) => {
-                if (error) reject({error});
+            (err, result, response) => {
+                if (err) reject(err);
                 else {
                     resolve(JSON.parse(result))
                 }

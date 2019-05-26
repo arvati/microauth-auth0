@@ -3,11 +3,20 @@ const url = require('url');
 const crypto = require('crypto');
 const redirect = require('micro-redirect');
 const get_ip = require('ipware')().get_ip;
-const json = require('micro').json;
-//const parse = require('urlencoded-body-parser');
+const parse = require('urlencoded-body-parser');
 const Auth0 = require('./Auth0');
 
 const provider = 'auth0';
+const states = [];
+var code_verifier = null;
+function newCodeVerifier() {
+  return crypto
+  .randomBytes(32)
+  .toString('base64')
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=/g, '');
+}
 
 const microAuth0 = ({ 
                       domain, 
@@ -24,26 +33,14 @@ const microAuth0 = ({
                       algorithm = "HS256 RS256",
                       allowPost = false,
                       realm,
-                      PKCE = false
+                      PKCE = false,
+                      silentPrompt = false
                     }) => {
-  ['domain',
-      'clientId',
-      'clientSecret',
-      'callbackUrl'].forEach(function (k) {
-      if(!k){
-        throw new Error('You must provide the ' + k + ' configuration value to use microauth-auth0.');
-      }
-    });
   // optionally scope as array 
   if (Array.isArray(scope)) { scope = scope.join(' '); }
-  const code_verifier = !PKCE ? null : crypto
-            .randomBytes(32)
-            .toString('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=/g, '');
-  const states = [];
-  return middleware = (next) => { return handler = async (req, res, ...args) => {
+  code_verifier = !PKCE ? null : newCodeVerifier();
+
+  return microauth = (next) => { return handler = async (req, res, ...args) => {
     if (send_ip) {
       const {clientIp, clientIpRoutable} = get_ip(req, false);
       send_ip = !clientIpRoutable ? false : clientIp // Only use Ip that is externally route-able / Public
@@ -62,9 +59,29 @@ const microAuth0 = ({
       algorithm,
       allowPost,
       realm,
-      code_verifier
+      code_verifier,
+      silentPrompt
     }
     const auth0 = new Auth0(params);
+
+    const getResult = async ({tokens}) => {
+      const result = await Promise.all([
+        auth0.verifyApiToken(tokens.access_token),
+        auth0.getUserInfo({token: tokens.access_token}),
+        auth0.verifyIdToken(tokens.id_token)
+      ]).catch(e => {throw new Error(e)});
+      return {
+        provider,
+        accessToken: tokens.access_token,
+        tokens,
+        info: {
+          apiToken: result[0],
+          user: result[1],
+          idToken: result[2]
+        }
+      };
+    }
+
     const { pathname, query } = url.parse(req.url);
 
     if (pathname === path) {
@@ -76,10 +93,13 @@ const microAuth0 = ({
             states.push(state);
           }
           return redirect(res, 302, redirectUrl);
-        } else if (allowPost) {
-          // TODO : change getOAuthAccessToken check if clientSecret exists there and change grant_type if needed
-          const {username, password} = await json(req)
+        } else if (allowPost && req.headers['content-type'] === 'application/x-www-form-urlencoded') {
+          const {username, password} = await parse(req)
           const tokens = await auth0.getOAuthAccessToken({username, password, grant_type: 'password'})
+          const result = await getResult({tokens})
+                                .catch(e => {throw new Error(e)});
+          args.push({ result });
+          return next(req, res, ...args);
         }
       } catch (err) {
         args.push({ err, provider });
@@ -91,54 +111,23 @@ const microAuth0 = ({
     if (pathname === url.parse(callbackUrl).pathname) {
       try {
         const { state, code, error, error_description} = querystring.parse(query);
+        // error parameter from query send by authentication server
         if (error) {
-          const err = new Error(error + ': ' + error_description);
-          args.push({ err, provider });
-          return next(req, res, ...args);
+          throw new Error(error + ': ' + error_description);
         } else if (!auth0.getNoState() && !states.includes(state)) {
-          const err = new Error('Invalid state: ' + state);
-          args.push({ err, provider });
-          return next(req, res, ...args);
+          throw new Error('Invalid state: ' + state);
         }
 
         // deletes state from states array
         states.splice(states.indexOf(state), 1);
 
+        // getResult()
         const tokens = await auth0.getOAuthAccessToken({code})
+                        .catch(e => {throw e});
         // refresh token only if scope = offline_access
-        if (tokens.error) {
-          args.push({ err: tokens.error, provider });
-          return next(req, res, ...args);
-        }
 
-        const apiToken = await auth0.verifyApiToken(tokens.access_token)
-        if (apiToken.error) {
-          args.push({ err: apiToken.error, provider });
-          return next(req, res, ...args);
-        }
-        
-        const user = await auth0.getUserInfo({token: tokens.access_token})
-        if (user.error) {
-          args.push({ err: user.error, provider });
-          return next(req, res, ...args);
-        }
-
-        const idToken = await auth0.verifyIdToken(tokens.id_token)
-        if (idToken.error) {
-          args.push({ err: idToken.error, provider });
-          return next(req, res, ...args);
-        }
-
-        const result = {
-          provider,
-          accessToken: tokens.access_token,
-          tokens,
-          info: {
-            user,
-            idToken,
-            apiToken
-          }
-        };
+        const result = await getResult({tokens})
+                              .catch(e => {throw new Error(e)});
         args.push({ result });
         return next(req, res, ...args);
       } catch (err) {
