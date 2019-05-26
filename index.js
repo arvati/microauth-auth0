@@ -103,8 +103,7 @@ module.exports = ({
       else if (req.path === callbackURL.pathname) {
         // https://nodejs.org/api/url.html#url_constructor_new_urlsearchparams_string
         const searchParams = new URLSearchParams (req.search)
-        // error parameter from query send by authentication server
-        if (searchParams.has('error')) {
+        if (searchParams.has('error')) { // error parameter from query send by authentication server
           if (!session.prompt) {
             return redirect(req, res, auth0.getAuthorizeUrl({silentPrompt:false}));
           }

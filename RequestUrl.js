@@ -4,12 +4,12 @@ module.exports = (req, {trustProxy = true}) => {
     const getProtocol = (request) => {
         var proto = request.connection.encrypted ? 'https' : 'http';
         // only do this if you trust the proxy
-        if (trustProxy) proto = request.headers['x-forwarded-proto'] || proto;
+        if (trustProxy) proto = request.headers['X-Forwarded-Proto'] || proto;
         return proto.split(/\s*,\s*/)[0];
     }
     const getHost = (request) =>{
         var host = request.headers['host']
-        if (trustProxy) host = request.headers['x-forwarded-host'] || host;
+        if (trustProxy) host = request.headers['X-Forwarded-Host'] || host;
         return host.split(/\s*,\s*/)[0]
     }
     const getIp = (request) => {
