@@ -1,6 +1,4 @@
-const querystring = require('querystring');
-const url = require('url');
-const get_ip = require('ipware')().get_ip;
+const requestUrl = require('./RequestUrl');
 const parse = require('urlencoded-body-parser');
 const Auth0 = require('./Auth0');
 const Session = require('./Session');
@@ -24,22 +22,20 @@ module.exports = ({
                       allowPost = false,
                       realm,
                       PKCE,
-                      silentPrompt = false
+                      silentPrompt = false,
+                      trustProxy
                     }) => {
   // optionally scope as array 
   if (Array.isArray(scope)) { scope = scope.join(' '); }
+
   session = new Session ({noState,PKCE});
 
-  const redirect = (res, redirectUrl) => {
-    const {state, prompt, redirect_uri} = querystring.parse(url.parse(redirectUrl).query);
-    if (redirect_uri) {
-      const callbackUri = url.parse(redirect_uri, true)
-      // Check if callbackUri is relative misses host, protocol, port
-    }
+  const redirect = (req, res, redirectUrl) => {
+    const params = new URL(redirectUrl).searchParams
     // saves if noPrompt
-    session.prompt = (prompt === 'none') ? false : true;
+    session.prompt = (params.get('prompt') === 'none') ? false : true;
     // saves if state
-    session.addState(state);
+    session.addState(params.get('state'));
     // redirect
     res.statusCode = 302;
     res.setHeader('Location', redirectUrl);
@@ -47,15 +43,16 @@ module.exports = ({
   }
 
   return microauth = (next) => { return handler = async (req, res, ...args) => {
+    requestUrl(req,{trustProxy})
+    const callbackURL = new URL(callbackUrl, req.origin + '/' + req.path)
     if (send_ip) {
-      const {clientIp, clientIpRoutable} = get_ip(req, false);
-      send_ip = !clientIpRoutable ? false : clientIp // Only use Ip that is externally route-able / Public
+      send_ip = !req.clientIpRoutable ? false : req.clientIp // Only use Ip that is externally route-able / Public
     }
     const params = {
       clientId, 
       clientSecret, 
       domain, 
-      callbackUrl,
+      callbackUrl: callbackURL.toString(),
       connection,
       audience,
       scope,
@@ -87,10 +84,8 @@ module.exports = ({
         }
       };
     }
-
-    const { pathname, query } = url.parse(req.url);
     try {
-      if (pathname === path) {
+      if (req.path === path) {
         if (req.method === 'POST' && req.headers['content-type'] === 'application/x-www-form-urlencoded') {
           // todo: another POST type = check if body contais refresh_token to revoke or refresh
           if (allowPost) {
@@ -102,28 +97,29 @@ module.exports = ({
             return next(req, res, ...args);
           }
         } else if (req.method === 'GET') {
-          return redirect(res, auth0.getAuthorizeUrl({silentPrompt}));
+          return redirect(req, res, auth0.getAuthorizeUrl({silentPrompt}));
         } else return next(req, res, ...args)
       }
-      else if (pathname === url.parse(callbackUrl).pathname) {
-        const { state, code, error, error_description} = querystring.parse(query);
+      else if (req.path === callbackURL.pathname) {
+        // https://nodejs.org/api/url.html#url_constructor_new_urlsearchparams_string
+        const searchParams = new URLSearchParams (req.search)
         // error parameter from query send by authentication server
-        if (error) {
+        if (searchParams.has('error')) {
           if (!session.prompt) {
-            return redirect(res, auth0.getAuthorizeUrl({silentPrompt:false}));
+            return redirect(req, res, auth0.getAuthorizeUrl({silentPrompt:false}));
           }
-          else throw new Error(error + ': ' + error_description);
-        } else if (!session.verifyState(state)) {
-          throw new Error('Invalid state: ' + state);
+          else throw new Error(searchParams.get('error') + ': ' + searchParams.get('error_description') );
+        } else if (!session.verifyState(searchParams.get('state'))) {
+          throw new Error('Invalid state: ' + searchParams.get('state'));
         }
 
-        const tokens = await auth0.getOAuthAccessToken({code})
+        const tokens = await auth0.getOAuthAccessToken({code: searchParams.get('code')})
                         .catch(e => {throw e});
 
         const result = await getResult({tokens})
                               .catch(e => {throw e});
         
-        session.delState(state);
+        session.delState(searchParams.get('state'));
         args.push({ result });
         return next(req, res, ...args);
       }

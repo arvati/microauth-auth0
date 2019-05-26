@@ -24,7 +24,6 @@
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.5.1",
     "oauth": "^0.9.15",
-    "querystring": "^0.2.0",
     "urlencoded-body-parser": "^2.0.1",
     "uuid": "^3.3.2"
   },
@@ -37,7 +36,7 @@
     "micro-dev": "^3.0.0"
   },
   "engines": {
-    "node": ">=7.10.1"
+    "node": ">7.10.1"
   },
   "files": [
     "Auth0.js",
