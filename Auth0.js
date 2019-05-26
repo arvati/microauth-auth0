@@ -41,8 +41,7 @@ class Auth0 {
                     algorithm,
                     allowPost,
                     realm,
-                    code_verifier,
-                    silentPrompt
+                    code_verifier
                 }) {
         this._customHeaders = {
             "Auth0-Client": encodeClientInfo({ name: pkg.name, version: pkg.version })
@@ -60,11 +59,11 @@ class Auth0 {
         this._allowPost = allowPost;
         this._realm = realm;
         this._code_verifier = code_verifier;
-        this._silentPrompt = silentPrompt;
         this._basicAuth = !this._clientSecret ? false : basicAuth // Only Basic Auth when we have a password
         if (this._basicAuth) this._customHeaders["Authorization"] = encodeBasicHeader({username: this._clientId, password: this._clientSecret});
         if (this._send_ip) this._customHeaders["auth0-forwarded-for"] = this._send_ip
-        this._oauth2 = new OAuth2(this._clientId, 
+        this._oauth2 = new OAuth2(
+            this._clientId, 
             this._clientSecret,
             'https://' + this._domain, 
             '/authorize', 
@@ -75,8 +74,6 @@ class Auth0 {
         this._oauth2.setAccessTokenName("access_token");
         this._oauth2.setAuthMethod("Bearer");
     }
-
-
 
     decodeJws(signature){
         return jws.decode(signature, {complete: true, json:true})
@@ -127,17 +124,14 @@ class Auth0 {
             });
         })
     }
-    getAuthorizeUrl({state = uuid.v4(), response_type = "code"}) {
+    getAuthorizeUrl({silentPrompt, state = uuid.v4(), response_type = "code"}) {
         // https://auth0.com/docs/flows/guides/auth-code/add-login-auth-code#authorize-the-user
-        const params = {
-            response_type:response_type,
-            client_id:this._clientId
-        }
+        const params = { response_type:response_type }
         if (this._code_verifier) {
             params.code_challenge_method = 'S256'
             params.code_challenge = encodeChallenge(this._code_verifier)
         }
-        if (this._silentPrompt) params.prompt = 'none'
+        if (silentPrompt) params.prompt = 'none'
         if (this._callbackUrl) params.redirect_uri = this._callbackUrl
         if (this._scope) params.scope = this._scope
         if (this._audience) params.audience = this._audience
@@ -145,23 +139,10 @@ class Auth0 {
         if (this._connection) params.connection = this._connection
         return this._oauth2.getAuthorizeUrl(params)
     }
-    getNoState(){
-        return this._noState // With encoded state force this to true
-    }
-
-    getOAuthAccessToken({code, grant_type = 'authorization_code', username, password, refresh_token}) {
+    getOAuthAccessToken({code, grant_type = 'authorization_code', username, password}) {
         var _self = this;
         return new Promise(function (resolve, reject) {
-            const params = { 
-                grant_type: grant_type, 
-                client_id: _self._clientId, 
-                client_secret: _self._clientSecret, 
-                redirect_uri: _self._callbackUrl 
-            }
-            if (_self._basicAuth) {
-                delete params["client_id"];
-                delete params["client_secret"];
-            }
+            const params = { grant_type: grant_type }
             if (grant_type === 'password') {
                 // Make sure there are all parameters set
                 if (!username || !password || !_self._clientSecret || !_self._allowPost) 
@@ -182,18 +163,13 @@ class Auth0 {
                 params.audience = _self._audience
                 code = null
             } else if (grant_type === 'refresh_token') {
-                if (!refresh_token && this._scope.split(' ').includes('offline_access')) 
-                    reject(new Error('This grant type \"' + grant_type + '\" requires refresh_token and scope contains offline_access' ))
-                params.refresh_token = refresh_token
-                code = null    
+                if (!code && this._scope.split(' ').includes('offline_access')) 
+                    reject(new Error('This grant type \"' + grant_type + '\" requires refresh_token as {code} parameter and scope contains offline_access' ))
             } else if (grant_type === 'authorization_code') {
                 if (!code) 
                     reject(new Error('This grant type \"' + grant_type + '\" requires code received from /authorize' ))
                 if (_self._callbackUrl) params.redirect_uri = _self._callbackUrl
-                if (_self._code_verifier) {
-                    params.code_verifier = _self._code_verifier
-                    params.client_id = _self._clientId // force client_id
-                }
+                if (_self._code_verifier) params.code_verifier = _self._code_verifier
             }
             _self._oauth2.getOAuthAccessToken(code, params, 
                  (err, access_token, refresh_token, results) => {

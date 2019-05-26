@@ -18,7 +18,7 @@ const options = {
   allowPost: true, // allow sending credentials with POST
   realm: process.env.AUTH0_CONNECTION,
   PKCE: true,
-  silentPrompt : false
+  silentPrompt : true
 };
 
 const auth0 = microAuthAuth0(options);

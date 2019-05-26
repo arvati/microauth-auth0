@@ -23,7 +23,6 @@
     "ipware": "^2.0.0",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^1.5.1",
-    "micro-redirect": "^1.0.0",
     "oauth": "^0.9.15",
     "querystring": "^0.2.0",
     "urlencoded-body-parser": "^2.0.1",
@@ -41,6 +40,7 @@
     "node": ">=7.10.1"
   },
   "files": [
-    "Auth0.js"
+    "Auth0.js",
+    "Session.js"
   ]
 }
