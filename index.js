@@ -7,8 +7,7 @@ const parse = require('urlencoded-body-parser');
 const Auth0 = require('./Auth0');
 
 const provider = 'auth0';
-const states = [];
-var code_verifier = null;
+
 function newCodeVerifier() {
   return crypto
   .randomBytes(32)
@@ -18,7 +17,7 @@ function newCodeVerifier() {
   .replace(/=/g, '');
 }
 
-const microAuth0 = ({ 
+module.exports = ({ 
                       domain, 
                       clientId, 
                       clientSecret, 
@@ -36,6 +35,8 @@ const microAuth0 = ({
                       PKCE = false,
                       silentPrompt = false
                     }) => {
+  const states = [];
+  var code_verifier = null;
   // optionally scope as array 
   if (Array.isArray(scope)) { scope = scope.join(' '); }
   code_verifier = !PKCE ? null : newCodeVerifier();
@@ -69,7 +70,7 @@ const microAuth0 = ({
         auth0.verifyApiToken(tokens.access_token),
         auth0.getUserInfo({token: tokens.access_token}),
         auth0.verifyIdToken(tokens.id_token)
-      ]).catch(e => {throw new Error(e)});
+      ]).catch(e => {throw e});
       return {
         provider,
         accessToken: tokens.access_token,
@@ -97,7 +98,7 @@ const microAuth0 = ({
           const {username, password} = await parse(req)
           const tokens = await auth0.getOAuthAccessToken({username, password, grant_type: 'password'})
           const result = await getResult({tokens})
-                                .catch(e => {throw new Error(e)});
+                                .catch(e => {throw e});
           args.push({ result });
           return next(req, res, ...args);
         }
@@ -106,9 +107,7 @@ const microAuth0 = ({
         return next(req, res, ...args);
       }
     }
-
-    // callback pathname
-    if (pathname === url.parse(callbackUrl).pathname) {
+    else if (pathname === url.parse(callbackUrl).pathname) {
       try {
         const { state, code, error, error_description} = querystring.parse(query);
         // error parameter from query send by authentication server
@@ -117,17 +116,15 @@ const microAuth0 = ({
         } else if (!auth0.getNoState() && !states.includes(state)) {
           throw new Error('Invalid state: ' + state);
         }
-
-        // deletes state from states array
-        states.splice(states.indexOf(state), 1);
-
         // getResult()
         const tokens = await auth0.getOAuthAccessToken({code})
                         .catch(e => {throw e});
-        // refresh token only if scope = offline_access
 
         const result = await getResult({tokens})
-                              .catch(e => {throw new Error(e)});
+                              .catch(e => {throw e});
+        
+        // deletes state from states array
+        // states.splice(states.indexOf(state), 1);
         args.push({ result });
         return next(req, res, ...args);
       } catch (err) {
@@ -135,9 +132,6 @@ const microAuth0 = ({
         return next(req, res, ...args);
       }
     }
-
-    return next(req, res, ...args)
+    else return next(req, res, ...args)
   }}
 };
-
-module.exports = microAuth0;

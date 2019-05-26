@@ -82,10 +82,10 @@ class Auth0 {
         return jws.decode(signature, {complete: true, json:true})
     }
     async verifyIdToken(token){ // only verify token if scope contains openid
-        return !this._scope.split(' ').includes('openid') ? {} : await this.verifyToken({token, audience: this._clientId}).catch(e => {throw new Error(e)});
+        return !this._scope.split(' ').includes('openid') ? {} : await this.verifyToken({token, audience: this._clientId}).catch(e => {throw e});
     }
     async verifyApiToken(token){ // only verify token if audience is set
-        return !this._audience ? {} : await this.verifyToken({token, audience: this._audience}).catch(e => {throw new Error(e)});
+        return !this._audience ? {} : await this.verifyToken({token, audience: this._audience}).catch(e => {throw e});
     }
     verifyToken({token, audience, algorithms = this._algorithm}) {
         var _self = this;
@@ -182,10 +182,10 @@ class Auth0 {
                 params.audience = _self._audience
                 code = null
             } else if (grant_type === 'refresh_token') {
-                if (!refresh_token) 
-                    reject(new Error('This grant type \"' + grant_type + '\" requires refresh_token' ))
+                if (!refresh_token && this._scope.split(' ').includes('offline_access')) 
+                    reject(new Error('This grant type \"' + grant_type + '\" requires refresh_token and scope contains offline_access' ))
                 params.refresh_token = refresh_token
-                code = null
+                code = null    
             } else if (grant_type === 'authorization_code') {
                 if (!code) 
                     reject(new Error('This grant type \"' + grant_type + '\" requires code received from /authorize' ))

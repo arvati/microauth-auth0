@@ -175,4 +175,5 @@ Multifactor authentication
 Passwords Lists
 ----
 * https://github.com/danielmiessler/SecLists
+* https://www.npmjs.com/signup/common-passwords
 * https://haveibeenpwned.com/API/v2

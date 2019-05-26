@@ -37,8 +37,8 @@ const handler = async (req, res, auth) => {
 
   // Save something in database here
 
-  return auth;
-  return `Hello ${auth.result.info.user.nickname} !`;
+  return send(res,200, auth);
+  //return `Hello ${auth.result.info.user.nickname} !`;
 
 };
 
