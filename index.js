@@ -84,9 +84,8 @@ module.exports = ({
     }
 
     const { pathname, query } = url.parse(req.url);
-
-    if (pathname === path) {
-      try {
+    try {
+      if (pathname === path) {
         if (req.method !== 'POST') {
           const redirectUrl = auth0.getAuthorizeUrl({});
           if (!auth0.getNoState()) {
@@ -102,13 +101,9 @@ module.exports = ({
           args.push({ result });
           return next(req, res, ...args);
         }
-      } catch (err) {
-        args.push({ err, provider });
-        return next(req, res, ...args);
+
       }
-    }
-    else if (pathname === url.parse(callbackUrl).pathname) {
-      try {
+      else if (pathname === url.parse(callbackUrl).pathname) {
         const { state, code, error, error_description} = querystring.parse(query);
         // error parameter from query send by authentication server
         if (error) {
@@ -127,11 +122,12 @@ module.exports = ({
         // states.splice(states.indexOf(state), 1);
         args.push({ result });
         return next(req, res, ...args);
-      } catch (err) {
-        args.push({ err, provider });
-        return next(req, res, ...args);
       }
+      else return next(req, res, ...args)
+    } catch (err) {
+      console.error(err)
+      args.push({ err, provider });
+      return next(req, res, ...args);
     }
-    else return next(req, res, ...args)
   }}
 };
