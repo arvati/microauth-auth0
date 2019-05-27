@@ -25,7 +25,7 @@ module.exports = ({
             PKCE,
             silentPrompt = true,
             trustProxy,
-            whitelist
+            whitelist = '(.*)'
           }) => {
   // optionally scope as array 
   if (Array.isArray(scope)) { scope = scope.join(' '); }
@@ -131,9 +131,13 @@ module.exports = ({
         args.push({ result });
         return next(req, res, ...args);
       }
-      else if (Array.isArray(whitelist) && pathToRegexp(whitelist).test(req.path)) {
-          return next(req, res, ...args)
-        }
+      else if (pathToRegexp(whitelist).test(req.path)) {
+        args.push({ result : {  // continue without result parameter
+          provider,
+          info: {}
+        } });
+        return next(req, res, ...args)
+      }
       else if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
         throw new Error('Missing Authorization header');
       }

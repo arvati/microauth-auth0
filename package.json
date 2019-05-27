@@ -41,6 +41,7 @@
   },
   "files": [
     "Auth0.js",
-    "Session.js"
+    "Session.js",
+    "RequestUrl.js"
   ]
 }

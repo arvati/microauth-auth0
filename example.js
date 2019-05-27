@@ -20,7 +20,7 @@ const options = {
   PKCE: true, // Selects App Native in Auth0 Dashboard for this to work
   silentPrompt : true,
   trustProxy: true, // used when detecting origin and protocol
-  whitelist : ['/imagine/(.*)','/wth/mtf/'] // array of whitelist paths to not verify authorization with jwt tokens
+  whitelist : ['/imagine/(.*)','/wth/'] // array of whitelist paths to not verify authorization with jwt tokens
 };
 
 const auth0 = microAuthAuth0(options);
@@ -28,7 +28,7 @@ const auth0 = microAuthAuth0(options);
 const handler = async (req, res, auth) => {
 
   if (!auth) {
-    return send(res, 200, 'This is whitelisted path:' + req.path);
+    return send(res, 404, 'Not Found');
   }
 
   if (auth.err) {

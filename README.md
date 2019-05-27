@@ -16,10 +16,26 @@ yarn add microauth-auth0
 ## Configuration
 
 Take your credentials from the settings section in the [Auth0 dashboard](https://manage.auth0.com/#/applications) :
-* Allowed Callback URLs:	'http://localhost:3000/auth/auth0/callback'
-* Domain:			'your-domain.auth0.com'
-* Client ID:			'your-client-id'
-* Client Secret:		'your-client-secret'
+|Setting                  | value example | configuration |
+|---|---|---|
+| Allowed Callback URLs:|'http://localhost:3000/auth/auth0/callback'| callbackUrl |
+| Domain:|'your-domain.auth0.com'| domain |
+| Client ID:|'your-client-id'| clientId |
+| Client Secret:|'your-client-secret'| clientSecret |
+| | | connection |
+| | | audience |
+| | 'openid email address phone profile' | scope |
+| | false | noState |
+| | false | basicAuth |
+| | false | send_ip |
+| | 'RS256' | algorithm |
+| | false | allowPost |
+| | | realm |
+| | true | PKCE |
+| | true | silentPrompt |
+| | true | trustProxy |
+| | ['/imagine/(.*)','/wth/'] | whitelist |
+| | '/auth/auth0/' | path |
 
 ## Usage
 
@@ -46,10 +62,12 @@ const auth0 = microAuthAuth0(options);
 // so it will { err: errorObject} or { result: {
 //  provider: 'auth0',
 //  accessToken: 'blahblah',
-//  tokens: all tokens
-//  info.userInfo
-//  info.token // decoded token id
-// }}
+//  tokens: {all tokens and related information}
+//  info : {
+//    user : {data from /userinfo endpoint}
+//    apiToken : {decoded access jwt token}
+//    idToken : {decoded token id}
+// }}}
 
 const handler = async (req, res, auth) => {
 
