@@ -10,10 +10,10 @@ module.exports = ({
                       domain, 
                       clientId, 
                       clientSecret, 
-                      callbackUrl, 
+                      callbackUrl = '/auth/auth0/callback', 
                       connection, 
                       audience,
-                      path = '/auth/auth0', 
+                      path = '/auth/auth0/', 
                       scope = 'openid email profile', 
                       noState,
                       basicAuth = false,
@@ -22,7 +22,7 @@ module.exports = ({
                       allowPost = false,
                       realm,
                       PKCE,
-                      silentPrompt = false,
+                      silentPrompt = true,
                       trustProxy
                     }) => {
   // optionally scope as array 
@@ -44,7 +44,8 @@ module.exports = ({
 
   return microauth = (next) => { return handler = async (req, res, ...args) => {
     requestUrl(req,{trustProxy})
-    const callbackURL = new URL(callbackUrl, req.origin + '/' + req.path)
+    const callbackURL = new URL(callbackUrl, req.origin )
+    path = new URL(path,req.origin).pathname
     if (send_ip) {
       send_ip = !req.clientIpRoutable ? false : req.clientIp // Only use Ip that is externally route-able / Public
     }
