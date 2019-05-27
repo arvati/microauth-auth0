@@ -15,27 +15,29 @@ yarn add microauth-auth0
 
 ## Configuration
 
-Take your credentials from the settings section in the [Auth0 dashboard](https://manage.auth0.com/#/applications) :
-|Setting                  | value example | configuration |
-|---|---|---|
-| Allowed Callback URLs:|'http://localhost:3000/auth/auth0/callback'| callbackUrl |
-| Domain:|'your-domain.auth0.com'| domain |
-| Client ID:|'your-client-id'| clientId |
-| Client Secret:|'your-client-secret'| clientSecret |
-| | | connection |
-| | | audience |
-| | 'openid email address phone profile' | scope |
-| | false | noState |
-| | false | basicAuth |
-| | false | send_ip |
-| | 'RS256' | algorithm |
-| | false | allowPost |
-| | | realm |
-| | true | PKCE |
-| | true | silentPrompt |
-| | true | trustProxy |
-| | ['/imagine/(.*)','/wth/'] | whitelist |
-| | '/auth/auth0/' | path |
+Take your credentials from the settings section in the [Auth0 dashboard](https://manage.auth0.com/#/applications) :    
+
+
+| Setting                  | value example | configuration |
+| ------- | ------- | ------- |
+| Allowed Callback URLs: |'http://localhost:3000/auth/auth0/callback' | callbackUrl |
+| Domain: | 'your-domain.auth0.com'| domain |
+| Client ID: |'your-client-id'| clientId |
+| Client Secret: | 'your-client-secret' | clientSecret |
+| connections | 'database' | connection |
+| APIs | 'http://nomeOfApi/' | audience |
+| scopes | 'openid email address phone profile' | scope |
+| state parameter | false | noState |
+| basic Auth | false | basicAuth |
+| auth forward ip | false | send_ip |
+| algorithm | 'RS256' | algorithm |
+| Post Username and Password direct | false | allowPost |
+| database connection | 'database' | realm |
+| native app | true | PKCE |
+| 'prompt=none' parameter | true | silentPrompt |
+| when discovering host and protocol | true | trustProxy |
+| not check these paths | ['/imagine/(.*)','/wth/'] | whitelist |
+| path to login redirect | '/auth/auth0/' | path |
 
 ## Usage
 
