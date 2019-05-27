@@ -8,7 +8,7 @@ const options = {
   //clientSecret: process.env.AUTH0_CLIENT_SECRET, // Not needed when PKCE enabled
   callbackUrl: '/auth/auth0/callback',
   //connection: process.env.AUTH0_CONNECTION, // Forces the user to sign in with a specific connection
-  //audience: process.env.AUTH0_AUDIENCE, // Your API Identifier
+  audience: process.env.AUTH0_AUDIENCE, // Optional : Your API Identifier
   path: '/auth/auth0/',
   scope: 'openid email address phone profile',
   //noState: false, // disables state parameter (not recomended)
@@ -18,7 +18,9 @@ const options = {
   //allowPost: false, // allow sending credentials with POST
   //realm: process.env.AUTH0_CONNECTION, // Verify POST credentials with this database
   PKCE: true, // Selects App Native in Auth0 Dashboard for this to work
-  silentPrompt : true 
+  silentPrompt : true,
+  trustProxy: true, // used when detecting origin and protocol
+  whitelist : ['/imagine/(.*)','/wth/mtf/'] // array of whitelist paths to not verify authorization with jwt tokens
 };
 
 const auth0 = microAuthAuth0(options);
@@ -26,7 +28,7 @@ const auth0 = microAuthAuth0(options);
 const handler = async (req, res, auth) => {
 
   if (!auth) {
-    return send(res, 404, 'Not Found');
+    return send(res, 200, 'This is whitelisted path:' + req.path);
   }
 
   if (auth.err) {

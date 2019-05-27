@@ -1,5 +1,6 @@
-const requestUrl = require('./RequestUrl');
 const parse = require('urlencoded-body-parser');
+const pathToRegexp = require('path-to-regexp');
+const requestUrl = require('./RequestUrl');
 const Auth0 = require('./Auth0');
 const Session = require('./Session');
 
@@ -7,24 +8,25 @@ const provider = 'auth0';
 
 
 module.exports = ({ 
-                      domain, 
-                      clientId, 
-                      clientSecret, 
-                      callbackUrl = '/auth/auth0/callback', 
-                      connection, 
-                      audience,
-                      path = '/auth/auth0/', 
-                      scope = 'openid email profile', 
-                      noState,
-                      basicAuth = false,
-                      send_ip = false,
-                      algorithm = "HS256 RS256",
-                      allowPost = false,
-                      realm,
-                      PKCE,
-                      silentPrompt = true,
-                      trustProxy
-                    }) => {
+            domain, 
+            clientId, 
+            clientSecret, 
+            callbackUrl = '/auth/auth0/callback', 
+            connection, 
+            audience,
+            path = '/auth/auth0/', 
+            scope = 'openid email profile', 
+            noState,
+            basicAuth = false,
+            send_ip = false,
+            algorithm = "HS256 RS256",
+            allowPost = false,
+            realm,
+            PKCE,
+            silentPrompt = true,
+            trustProxy,
+            whitelist
+          }) => {
   // optionally scope as array 
   if (Array.isArray(scope)) { scope = scope.join(' '); }
 
@@ -69,21 +71,27 @@ module.exports = ({
     const auth0 = new Auth0(params);
 
     const getResult = async ({tokens}) => {
-      const result = await Promise.all([
-        auth0.verifyApiToken(tokens.access_token),
-        auth0.getUserInfo({token: tokens.access_token}),
-        auth0.verifyIdToken(tokens.id_token)
-      ]).catch(e => {throw e});
+      const promises = [];
+      if (tokens.access_token) {
+        promises.push(auth0.verifyApiToken(tokens.access_token))
+        promises.push(auth0.getUserInfo({token: tokens.access_token}))
+      }
+      if (tokens.id_token) {
+        promises.push(auth0.verifyIdToken(tokens.id_token))
+      }
+      const result = await Promise.all(promises).catch(e => {throw e});
+      const info = {};
+      if (tokens.access_token) {
+        info.apiToken = result[0]
+        info.user = result[1]
+        if (tokens.id_token) info.idToken = result[2]
+      } else if (tokens.id_token) info.idToken = result[0]
       return {
         provider,
         accessToken: tokens.access_token,
         tokens,
-        info: {
-          apiToken: result[0],
-          user: result[1],
-          idToken: result[2]
-        }
-      };
+        info
+      }
     }
     try {
       if (req.path === path) {
@@ -123,7 +131,21 @@ module.exports = ({
         args.push({ result });
         return next(req, res, ...args);
       }
-      else return next(req, res, ...args)
+      else if (Array.isArray(whitelist) && pathToRegexp(whitelist).test(req.path)) {
+          return next(req, res, ...args)
+        }
+      else if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+        throw new Error('Missing Authorization header');
+      }
+      else {
+        const result = await getResult({
+          tokens : {
+            access_token : req.headers.authorization.replace('Bearer ', '')
+          }
+        }).catch(e => {throw e});
+        args.push({ result });
+        return next(req, res, ...args);
+      }
     } catch (err) {
       console.error(err)
       args.push({ err, provider });
