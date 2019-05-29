@@ -13,7 +13,7 @@
   "bugs": "https://github.com/arvati/microauth-auth0/issues",
   "main": "index.js",
   "scripts": {
-    "example": "micro-dev example.js"
+    "example": "node --inspect node_modules/.bin/micro-dev example.js"
   },
   "repository": "github:arvati/microauth-auth0",
   "author": "Ademar Arvati Filho (https://github.com/arvati)",

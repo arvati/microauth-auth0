@@ -65,6 +65,3 @@ typings/
 .idea
 
 # VS Code
-.vscode
-.vscode/
-.vscode/*
