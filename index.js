@@ -50,7 +50,7 @@ module.exports = ({
     const callbackURL = new URL(callbackUrl, req.origin )
     path = new URL(path,req.origin).pathname
     if (send_ip) {
-      send_ip = !req.clientIpRoutable ? false : req.clientIp // Only use Ip that is externally route-able / Public
+      send_ip = !req.ipRoutable ? false : req.ip // Only use Ip that is externally route-able / Public
     }
     const params = {
       clientId, 

@@ -1,11 +1,10 @@
-const {get_ip, is_private_ip, is_valid_ip, is_loopback_ip, cleanup_ip} = require('ipware')();
-const proxyaddr = require('proxy-addr');
+const {is_private_ip, is_valid_ip, is_loopback_ip, cleanup_ip} = require('ipware')();
 const originalurl=require('original-url');
 
 module.exports = (req) => {
     const getIp = (request) => {
         //testing manually because do not want req to be populated with attibutes.
-        var remoteIp = [
+        return [
             "HTTP_X_FORWARDED_FOR",
             "HTTP_CLIENT_IP",
             "HTTP_X_REAL_IP",
@@ -19,7 +18,7 @@ module.exports = (req) => {
             "X-Client-IP",
             "X-Forwarded-For",
             "REMOTE_ADDR"
-          ].reduce(  // reduce getting acc as first headers name not null
+          ].reduce(
                     (acc, key) => (req.headers[key] || 
                             req.headers[key.toUpperCase()] ||
                             req.headers[key.toLowerCase()] ||
@@ -27,12 +26,21 @@ module.exports = (req) => {
                             req.headers[key.toUpperCase().replace(/_/g, '-')] ||
                             request.connection.remoteAddress || '127.0.0.1').split(/\s*,\s*/).reduce(
                                 (ret, cur) => {
-
-                                }
+                                    last = cleanup_ip(ret)
+                                    if (last && is_valid_ip(last) && !is_private_ip(last)) return last 
+                                    else {
+                                        ip = cleanup_ip(cur)
+                                        if (ip && is_valid_ip(ip)) {
+                                            if (is_private_ip(ip)) {
+                                                if (!last || (!is_loopback_ip(ip) && is_loopback_ip(last))) return ip
+                                            } else return ip
+                                        }
+                                        else return last
+                                    }
+                                }, 
+                                acc
                             )
-                    ) || ;
-        // todo: create another array.reduce inside above reduce to test each ip for cleanup_ip, is_valid_ip, is_private_ip, is_loopback_ip
-        return remoteIp.split(/\s*,\s*/)[0]  //split this way gets first item from array separated by , with or without spaces
+                    ) || '127.0.0.1';
     }
     
     const getNow = (request) =>{
@@ -51,8 +59,6 @@ module.exports = (req) => {
     req["search"] = search // https://nodejs.org/api/url.html#url_class_urlsearchparams
     req["secure"] = ('https' == protocol)
     req["ip"] = getIp(req)
-    const {clientIp, clientIpRoutable} = get_ip(req, false);
-    req["clientIp"] = clientIp
-    req["clientIpRoutable"] = clientIpRoutable
+    req["ipRoutable"] = !is_private_ip(req.ip);
     req["nowUrl"] = getNow(req)
 }
