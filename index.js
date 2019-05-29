@@ -45,7 +45,8 @@ module.exports = ({
   }
 
   return microauth = (next) => { return handler = async (req, res, ...args) => {
-    requestUrl(req,{trustProxy})
+    requestUrl(req)
+    console.debug(req.ip)
     const callbackURL = new URL(callbackUrl, req.origin )
     path = new URL(path,req.origin).pathname
     if (send_ip) {
@@ -132,10 +133,6 @@ module.exports = ({
         return next(req, res, ...args);
       }
       else if (pathToRegexp(whitelist).test(req.path)) {
-        args.push({ result : {  // continue without result parameter
-          provider,
-          info: {}
-        } });
         return next(req, res, ...args)
       }
       else if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
