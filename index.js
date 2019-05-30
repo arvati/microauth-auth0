@@ -1,4 +1,5 @@
 const parse = require('urlencoded-body-parser');
+const encodeUrl = require('encodeurl')
 const pathToRegexp = require('path-to-regexp');
 const requestUrl = require('./RequestUrl');
 const Auth0 = require('./Auth0');
@@ -40,8 +41,8 @@ module.exports = ({
     session.addState(params.get('state'));
     // redirect
     res.statusCode = 302;
-    res.setHeader('Location', redirectUrl);
-    res.end();
+    res.setHeader('Location', encodeUrl(redirectUrl));
+    res.end('Status 302 - Redirecting to: ' + redirectUrl);
   }
 
   return microauth = (next) => { return handler = async (req, res, ...args) => {

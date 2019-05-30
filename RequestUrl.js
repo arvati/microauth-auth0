@@ -49,7 +49,7 @@ module.exports = (req) => {
         return request.headers['x-now-deployment-url'] || '';
     }
 
-    const getCookies = (request, secret, options) => {
+    const getCookies = (request, secret) => {
         var secrets = !secret || Array.isArray(secret) ? (secret || []) : [secret]
         var cookiesHeader = request.headers.cookie
         if (!cookiesHeader) return null
@@ -86,14 +86,26 @@ module.exports = (req) => {
             return ret
         }
 
-        var cookies = cookie.parse(cookiesHeader, options)
-        cookies = JSONCookies(cookies)
+        var cookies = cookie.parse(cookiesHeader)
             // parse signed cookies
         if (secrets.length !== 0) {
             var signedCookies = signedCookies(cookies, secrets)
             signedCookies = JSONCookies(signedCookies)
         }
+        cookies = JSONCookies(cookies)
         return {cookies, signedCookies}
+    }
+
+    const setCookies = (res, name, value, secret, options = {}) => {
+        if (secret) options.signed = true;
+        var val = typeof value === 'object' ? 'j:' + JSON.stringify(value) : String(value);
+        if ('maxAge' in options) {
+            options.expires = new Date(Date.now() + options.maxAge);
+            options.maxAge /= 1000;
+        }
+        if (options.path == null) options.path = '/';
+        if (options.signed)  val = 's:' + signature.sign(val, secret);
+        res.setHeader('Set-Cookie', cookie.serialize(name, String(val), options));
     }
 
     req['originalUrl'] = req.url
@@ -113,7 +125,6 @@ module.exports = (req) => {
 
     req.cookies = Object.create(null)
     req.signedCookies = Object.create(null)
-    const {cookies, signedCookies} = getCookies(req,"secret", options)
-    req = Object.assign(req, cookies)
-    req = Object.assign(req, signedCookies)
+    const {cookies, signedCookies} = getCookies(req, "secret", options)
+    req = Object.assign(req, {cookies, signedCookies} )
 }
