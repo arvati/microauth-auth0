@@ -1,5 +1,7 @@
 const {is_private_ip, is_valid_ip, is_loopback_ip, cleanup_ip} = require('ipware')();
-const originalurl=require('original-url');
+const originalurl = require('original-url');
+const cookie = require('cookie')
+const signature = require('cookie-signature')
 
 module.exports = (req) => {
     const getIp = (request) => {
@@ -47,13 +49,60 @@ module.exports = (req) => {
         return request.headers['x-now-deployment-url'] || '';
     }
 
+    const getCookies = (request, secret, options) => {
+        var secrets = !secret || Array.isArray(secret) ? (secret || []) : [secret]
+        var cookiesHeader = request.headers.cookie
+        if (!cookiesHeader) return null
+
+        const JSONCookie = (str) => {
+            if (typeof str !== 'string' || str.substr(0, 2) !== 'j:') return undefined 
+            try { 
+                return JSON.parse(str.slice(2))
+            } catch (err) { 
+                return undefined
+            }
+        }
+        const JSONCookies = (obj) => {
+            for (const key of Object.keys(obj)) {
+                var val = JSONCookie(obj[key])
+                if (val) obj[key] = val
+            }          
+            return obj
+        }
+        const signedCookie = (str) => {
+            if (typeof str !== 'string') return undefined
+            if (str.substr(0, 2) !== 's:') return str
+            return secrets.reduce( (acc,cur) => (!acc) ? signature.unsign(str.slice(2), cur) : false, false )
+          }
+        const signedCookies = (obj) => {
+            var ret = Object.create(null)
+            for (const key of Object.keys(obj)) {
+                var dec = signedCookie(obj[key], secret)
+                if (obj[key] !== dec) {
+                    ret[key] = dec
+                    delete obj[key]
+                }
+            }
+            return ret
+        }
+
+        var cookies = cookie.parse(cookiesHeader, options)
+        cookies = JSONCookies(cookies)
+            // parse signed cookies
+        if (secrets.length !== 0) {
+            var signedCookies = signedCookies(cookies, secrets)
+            signedCookies = JSONCookies(signedCookies)
+        }
+        return {cookies, signedCookies}
+    }
+
     req['originalUrl'] = req.url
     const {origin, protocol, host, hostname, port, pathname, search, hash} = new URL(originalurl(req).full)
     req["origin"] = origin
     req["protocol"] = protocol
     req["host"] = host
     req["hostname"] = hostname
-    req["port"] = port
+    req["port"] = port !== '' ? Number(port) : undefined
     req["path"] = pathname
     req["hash"] = hash // Only here for documentation pourposes
     req["search"] = search // https://nodejs.org/api/url.html#url_class_urlsearchparams
@@ -61,4 +110,10 @@ module.exports = (req) => {
     req["ip"] = getIp(req)
     req["ipRoutable"] = !is_private_ip(req.ip);
     req["nowUrl"] = getNow(req)
+
+    req.cookies = Object.create(null)
+    req.signedCookies = Object.create(null)
+    const {cookies, signedCookies} = getCookies(req,"secret", options)
+    req = Object.assign(req, cookies)
+    req = Object.assign(req, signedCookies)
 }
