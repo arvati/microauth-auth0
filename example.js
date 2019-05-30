@@ -20,7 +20,7 @@ const options = {
   PKCE: true, // Selects App Native in Auth0 Dashboard for this to work
   silentPrompt : true,
   trustProxy: true, // used when detecting origin and protocol
-  whitelist : ['/imagine/(.*)','/favicon.ico'] // array of whitelist paths to not verify authorization with jwt tokens
+  whitelist : ['/auth/imagine/(.*)','/favicon.ico'] // array of whitelist paths to not verify authorization with jwt tokens
 };
 
 const auth0 = microAuthAuth0(options);
