@@ -22,7 +22,7 @@
     "crypto": "^1.0.1",
     "encodeurl": "^1.0.2",
     "ipware": "^2.0.0",
-    "jsonwebtoken": "^8.5.1",
+    "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "^1.5.1",
     "oauth": "^0.9.15",
     "original-url": "^1.2.3",
